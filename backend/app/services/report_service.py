@@ -14,6 +14,9 @@ def build_report(
   best_surface = max(surface_predictions.values(), key=lambda item: item["ecpm"])
   intervals = winner.get("metricIntervals", {})
   ranking = winner.get("rankingBreakdown", {})
+  advanced = winner.get("advancedFeatures", {})
+  alignment = winner.get("alignment", {})
+  diagnosis = winner.get("diagnosis", {})
 
   return "\n".join(
     [
@@ -48,7 +51,10 @@ def build_report(
       f"- Average diversity: {active_strategy['metrics']['averageDiversity']:.2f}",
       f"- Average confidence: {active_strategy['metrics'].get('averageConfidence', 0):.2f}",
       f"- Rerank base score / final score: {ranking.get('baseScore', 0):.4f} / {ranking.get('finalScore', 0):.4f}",
+      f"- Pareto bonus / risk penalty: {ranking.get('paretoComponent', 0):.4f} / {ranking.get('riskPenalty', 0):.4f}",
       f"- MMR novelty penalty: {ranking.get('noveltyPenalty', 0):.4f}",
+      f"- Commercial quality / alignment: {advanced.get('commercialQuality', 0):.2f} / {alignment.get('overallAlignment', 0):.2f}",
+      f"- Diagnosis level: {diagnosis.get('level', 'unknown')}",
       "",
       "## 4. Surface Recommendation",
       f"- Best projected surface: {best_surface['label']} with predicted eCPM {best_surface['ecpm']:.1f}",

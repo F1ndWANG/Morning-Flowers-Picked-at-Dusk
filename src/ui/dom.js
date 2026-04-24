@@ -72,6 +72,10 @@ export function getDomElements() {
     caseInsightTranscript: document.querySelector("#case-insight-transcript"),
     caseInsightMode: document.querySelector("#case-insight-mode"),
     selectionReasons: document.querySelector("#selection-reasons"),
+    qualitySignals: document.querySelector("#quality-signals"),
+    diagnosisStrengths: document.querySelector("#diagnosis-strengths"),
+    diagnosisRisks: document.querySelector("#diagnosis-risks"),
+    diagnosisRecommendations: document.querySelector("#diagnosis-recommendations"),
     imagePromptDimensions: document.querySelector("#image-prompt-dimensions"),
     imagePromptPreview: document.querySelector("#image-prompt-preview"),
   };

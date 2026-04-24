@@ -458,7 +458,7 @@ select:focus {
 
 .creative-option-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
 }
 
@@ -475,6 +475,67 @@ select:focus {
   margin-top: 3px;
   color: var(--ink);
   font-size: 13px;
+}
+
+.quality-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quality-signal-grid article {
+  padding: 10px;
+  border: 1px solid rgba(23, 107, 99, 0.11);
+  border-radius: 10px;
+  background: rgba(23, 107, 99, 0.045);
+}
+
+.quality-signal-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.quality-signal-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--accent-deep);
+  font-size: 18px;
+}
+
+.diagnosis-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.diagnosis-grid article {
+  padding: 12px;
+  border: 1px solid rgba(23, 32, 31, 0.08);
+  border-radius: 12px;
+  background: rgba(23, 32, 31, 0.03);
+}
+
+.diagnosis-grid strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.diagnosis-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.diagnosis-list span {
+  display: inline-flex;
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(23, 32, 31, 0.08);
+  line-height: 1.5;
+  font-size: 12px;
 }
 
 @media (max-width: 1180px) {
@@ -517,6 +578,10 @@ select:focus {
   }
 
   .creative-option-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quality-signal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -1,7 +1,9 @@
 import re
 
 from backend.app.core.catalog import CATEGORY_CONFIG, PLATFORM_LABELS
+from backend.app.services.creative_feature_extractor import extract_advanced_features
 from backend.app.services.model_runtime_service import get_model_runtime, get_surface_weights
+from backend.app.services.multimodal_alignment_service import evaluate_multimodal_alignment
 from backend.app.services.predictor_service import predict_metric
 
 
@@ -94,7 +96,9 @@ def _build_signals(creative: dict, campaign: dict, case_context: dict) -> dict:
   }
 
 
-def _estimate_confidence(case_context: dict, signals: dict) -> float:
+def _estimate_confidence(case_context: dict, signals: dict, advanced_features: dict | None = None, alignment: dict | None = None) -> float:
+  advanced_features = advanced_features or {}
+  alignment = alignment or {}
   modality_stats = case_context.get("modalityStats", {})
   confidence = 0.58
   confidence += min(len(case_context.get("caseSummary", "")) / 240, 0.12)
@@ -102,6 +106,9 @@ def _estimate_confidence(case_context: dict, signals: dict) -> float:
   confidence += min(modality_stats.get("transcriptCount", 0) * 0.04, 0.08)
   confidence += signals["caseAlignmentSignal"] * 0.08
   confidence += signals["highlightSignal"] * 0.05
+  confidence += advanced_features.get("commercialQuality", 0) * 0.04
+  confidence += alignment.get("overallAlignment", 0) * 0.05
+  confidence -= advanced_features.get("conversionFriction", 0) * 0.04
   return _clamp(confidence, 0.55, 0.96)
 
 
@@ -148,13 +155,38 @@ def _build_reason_list(signals: dict, campaign: dict, case_context: dict) -> lis
 
 def score_creative(creative: dict, campaign: dict, case_context: dict, seed: float = 0) -> dict:
   signals = _build_signals(creative, campaign, case_context)
+  advanced_features = extract_advanced_features(creative, campaign, case_context)
+  alignment = evaluate_multimodal_alignment(creative, campaign, case_context)
   ctr, ctr_contributions = predict_metric("ctr", signals, seed * 0.0025)
   cvr, cvr_contributions = predict_metric("cvr", signals, seed * 0.0016)
+
+  ctr_multiplier = _clamp(
+    0.88
+    + advanced_features["hookStrength"] * 0.13
+    + advanced_features["emotionalIntensity"] * 0.05
+    + advanced_features["platformIntentFit"] * 0.06
+    + alignment["overallAlignment"] * 0.05
+    - advanced_features["riskCueDensity"] * 0.04,
+    0.86,
+    1.18,
+  )
+  cvr_multiplier = _clamp(
+    0.86
+    + advanced_features["trustDepth"] * 0.11
+    + advanced_features["sellingPointDensity"] * 0.08
+    + advanced_features["readability"] * 0.05
+    + alignment["imageCopyAlignment"] * 0.05
+    - advanced_features["conversionFriction"] * 0.10,
+    0.82,
+    1.20,
+  )
+  ctr = _clamp(ctr * ctr_multiplier, 0.001, 1)
+  cvr = _clamp(cvr * cvr_multiplier, 0.001, 1)
 
   bid_factor = CATEGORY_CONFIG[campaign["category"]]["bidFactor"]
   surface_factor = get_surface_weights().get(campaign["platform"], 1.0)
   ecpm = ctr * (1.4 + cvr * 100) * bid_factor * surface_factor * 1000
-  confidence = _estimate_confidence(case_context, signals)
+  confidence = _estimate_confidence(case_context, signals, advanced_features, alignment)
   intervals = _build_metric_intervals(ctr, cvr, ecpm, confidence)
 
   contributions = {
@@ -175,6 +207,8 @@ def score_creative(creative: dict, campaign: dict, case_context: dict, seed: flo
     },
     "metricIntervals": intervals,
     "features": signals,
+    "advancedFeatures": advanced_features,
+    "alignment": alignment,
     "contributions": contributions,
     "reasons": _build_reason_list(signals, campaign, case_context),
   }
@@ -189,6 +223,8 @@ def enrich_creatives(creatives: list[dict], campaign: dict, case_context: dict) 
         **creative,
         "metrics": scoring["metrics"],
         "features": scoring["features"],
+        "advancedFeatures": scoring["advancedFeatures"],
+        "alignment": scoring["alignment"],
         "contributions": scoring["contributions"],
         "metricIntervals": scoring["metricIntervals"],
         "reasons": scoring["reasons"],

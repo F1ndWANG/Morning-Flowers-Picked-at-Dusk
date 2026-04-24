@@ -23,6 +23,8 @@ def run_pipeline(form: dict) -> dict:
     "metrics": baseline_scoring["metrics"],
     "metricIntervals": baseline_scoring["metricIntervals"],
     "features": baseline_scoring["features"],
+    "advancedFeatures": baseline_scoring["advancedFeatures"],
+    "alignment": baseline_scoring["alignment"],
     "contributions": baseline_scoring["contributions"],
     "reasons": baseline_scoring["reasons"],
     "diversity": 0.22,
@@ -37,10 +39,11 @@ def run_pipeline(form: dict) -> dict:
   active_strategy = strategies[campaign["experimentMode"]]
 
   if campaign["experimentMode"] == "baseline":
+    baseline_winner = active_strategy["winner"]
     ranked_creatives = [
       {
-        **baseline,
-        "surfacePredictions": build_surface_predictions(baseline, campaign),
+        **baseline_winner,
+        "surfacePredictions": build_surface_predictions(baseline_winner, campaign),
       }
     ]
     image_trace = {

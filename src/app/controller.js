@@ -17,6 +17,11 @@ function formatScore(value) {
 }
 
 
+function formatRatio(value) {
+  return Number(value || 0).toFixed(2);
+}
+
+
 function formatRange(interval, formatter, fallbackValue) {
   if (!interval) {
     return `${formatter(fallbackValue)} - ${formatter(fallbackValue)}`;
@@ -36,6 +41,16 @@ function setHtml(node, html) {
   if (node) {
     node.innerHTML = html;
   }
+}
+
+
+function renderPills(node, items, emptyText = "暂无") {
+  setHtml(
+    node,
+    (items && items.length ? items : [emptyText])
+      .map((item) => `<span>${escapeHtml(item)}</span>`)
+      .join("")
+  );
 }
 
 
@@ -120,6 +135,8 @@ function renderCreativeQueue(dom, creatives, activeKey) {
             <span>CTR <b>${formatPercent(metrics.ctr || 0)}</b></span>
             <span>CVR <b>${formatPercent(metrics.cvr || 0)}</b></span>
             <span>eCPM <b>${Number(metrics.ecpm || 0).toFixed(1)}</b></span>
+            <span>Quality <b>${formatRatio(creative.advancedFeatures?.commercialQuality)}</b></span>
+            <span>Align <b>${formatRatio(creative.alignment?.overallAlignment)}</b></span>
           </div>
         </button>
       `;
@@ -156,19 +173,34 @@ function renderCreativeDetail(dom, result, winner) {
   setText(dom.ecpmLift, "收益效率预估");
   setText(dom.confidenceHint, assetCount > 0 ? "已融合素材信息" : "基于文本与结构化字段");
 
-  setHtml(
-    dom.winnerSellingPoints,
-    (winner.sellingPoints || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")
-  );
+  renderPills(dom.winnerSellingPoints, winner.sellingPoints || []);
 
   setText(dom.caseInsightSummary, caseContext.caseSummary || "暂无案例摘要。");
   setText(dom.caseInsightAssets, String(assetCount));
   setText(dom.caseInsightTranscript, transcriptText ? "已提取" : "无");
   setText(dom.caseInsightMode, multimodalInfo.mode === "api" ? "API" : "本地");
+  renderPills(dom.selectionReasons, winner.reasons || []);
   setHtml(
-    dom.selectionReasons,
-    (winner.reasons || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")
+    dom.qualitySignals,
+    [
+      ["商业质量", winner.advancedFeatures?.commercialQuality],
+      ["标题钩子", winner.advancedFeatures?.hookStrength],
+      ["卖点密度", winner.advancedFeatures?.sellingPointDensity],
+      ["信任深度", winner.advancedFeatures?.trustDepth],
+      ["图文一致", winner.alignment?.imageCopyAlignment],
+      ["整体一致", winner.alignment?.overallAlignment],
+    ]
+      .map(([label, value]) => `
+        <article>
+          <span>${escapeHtml(label)}</span>
+          <strong>${formatRatio(value)}</strong>
+        </article>
+      `)
+      .join("")
   );
+  renderPills(dom.diagnosisStrengths, winner.diagnosis?.strengths || [], "暂无明显优势");
+  renderPills(dom.diagnosisRisks, winner.diagnosis?.risks || [], "未发现明显风险");
+  renderPills(dom.diagnosisRecommendations, winner.diagnosis?.recommendations || [], "暂无优化建议");
   if (winner.imageAssetUrl && dom.sampleImage) {
     dom.sampleImage.src = winner.imageAssetUrl;
     dom.sampleImage.classList.add("visible");

@@ -1,8 +1,9 @@
 import re
 
 from backend.app.core.catalog import CATEGORY_CONFIG
+from backend.app.services.advanced_reranker_service import creative_similarity, rerank_creatives
 from backend.app.services.compliance_service import attach_compliance
-from backend.app.services.model_runtime_service import get_objective_weights
+from backend.app.services.diagnosis_service import build_creative_diagnosis
 from backend.app.services.scoring_service import enrich_creatives
 
 
@@ -20,10 +21,7 @@ def _jaccard(a: set[str], b: set[str]) -> float:
 
 
 def _creative_similarity(a: dict, b: dict) -> float:
-  text_similarity = _jaccard(_tokenize(_creative_text(a)), _tokenize(_creative_text(b)))
-  angle_similarity = 1.0 if a.get("angle") and a.get("angle") == b.get("angle") else 0.0
-  visual_similarity = 1.0 if a.get("visual") and a.get("visual") == b.get("visual") else 0.0
-  return min(1.0, text_similarity * 0.70 + angle_similarity * 0.18 + visual_similarity * 0.12)
+  return creative_similarity(a, b)
 
 
 def apply_diversity_penalty(candidates: list[dict]) -> list[dict]:
@@ -38,85 +36,14 @@ def apply_diversity_penalty(candidates: list[dict]) -> list[dict]:
   return diversified
 
 
-def _build_base_rank_items(candidates: list[dict], objective: str, diversity_weight: float) -> list[dict]:
-  weights = get_objective_weights()[objective]
-  max_ctr = max(item["metrics"]["ctr"] for item in candidates)
-  max_cvr = max(item["metrics"]["cvr"] for item in candidates)
-  max_ecpm = max(item["metrics"]["ecpm"] for item in candidates)
-  max_risk_adjusted_ecpm = max(item["metrics"].get("riskAdjustedEcpm", item["metrics"]["ecpm"]) for item in candidates)
-
-  ranked = []
-  for creative in candidates:
-    ctr_component = (creative["metrics"]["ctr"] / max_ctr) * weights["ctr"]
-    cvr_component = (creative["metrics"]["cvr"] / max_cvr) * weights["cvr"]
-    ecpm_component = (creative["metrics"]["ecpm"] / max_ecpm) * weights["ecpm"]
-    risk_adjusted_component = (
-      creative["metrics"].get("riskAdjustedEcpm", creative["metrics"]["ecpm"]) / max_risk_adjusted_ecpm
-    ) * 0.08
-    diversity_component = creative.get("diversity", 0.22) * diversity_weight
-    quality_factor = creative["compliance"]["scoreFactor"]
-    confidence_factor = 0.92 + creative["metrics"].get("confidence", 0.8) * 0.08
-    base_score = (
-      ctr_component
-      + cvr_component
-      + ecpm_component
-      + risk_adjusted_component
-      + diversity_component
-    ) * quality_factor * confidence_factor
-
-    ranked.append(
-      {
-        **creative,
-        "score": base_score,
-        "rankingBreakdown": {
-          "ctrComponent": ctr_component,
-          "cvrComponent": cvr_component,
-          "ecpmComponent": ecpm_component,
-          "riskAdjustedComponent": risk_adjusted_component,
-          "diversityComponent": diversity_component,
-          "qualityFactor": quality_factor,
-          "confidenceFactor": confidence_factor,
-          "noveltyPenalty": 0,
-          "maxSelectedSimilarity": 0,
-          "baseScore": base_score,
-          "finalScore": base_score,
-        },
-      }
-    )
-  return ranked
-
-
-def rerank_creatives(candidates: list[dict], objective: str, diversity_weight: float) -> list[dict]:
-  remaining = _build_base_rank_items(candidates, objective, diversity_weight)
-  selected: list[dict] = []
-
-  while remaining:
-    best_index = 0
-    best_candidate = remaining[0]
-    best_score = float("-inf")
-
-    for index, candidate in enumerate(remaining):
-      max_similarity = max((_creative_similarity(candidate, item) for item in selected), default=0.0)
-      novelty_penalty = max_similarity * diversity_weight * 0.45
-      final_score = candidate["rankingBreakdown"]["baseScore"] - novelty_penalty
-      if final_score > best_score:
-        best_score = final_score
-        best_index = index
-        best_candidate = {
-          **candidate,
-          "score": final_score,
-          "rankingBreakdown": {
-            **candidate["rankingBreakdown"],
-            "noveltyPenalty": novelty_penalty,
-            "maxSelectedSimilarity": max_similarity,
-            "finalScore": final_score,
-          },
-        }
-
-    selected.append(best_candidate)
-    remaining.pop(best_index)
-
-  return [{**creative, "rank": index + 1} for index, creative in enumerate(selected)]
+def attach_diagnosis(creatives: list[dict], campaign: dict, case_context: dict) -> list[dict]:
+  return [
+    {
+      **creative,
+      "diagnosis": build_creative_diagnosis(creative, campaign, case_context),
+    }
+    for creative in creatives
+  ]
 
 
 def _build_strategy_payload(key: str, label: str, description: str, winner: dict, creatives: list[dict], angle_count: int) -> dict:
@@ -146,6 +73,10 @@ def build_strategies(campaign: dict, baseline: dict, drafts: list[dict], case_co
   diversified = apply_diversity_penalty(with_compliance)
   predictive_only = rerank_creatives([{**item, "diversity": 0.22} for item in diversified], campaign["objective"], 0)
   full_ranked = rerank_creatives(diversified, campaign["objective"], campaign["diversityWeight"])
+  predictive_only = attach_diagnosis(predictive_only, campaign, case_context)
+  full_ranked = attach_diagnosis(full_ranked, campaign, case_context)
+  diversified = attach_diagnosis(diversified, campaign, case_context)
+  baseline_with_diagnosis = attach_diagnosis([baseline], campaign, case_context)[0]
   llm_only_winner = {**diversified[0], "rank": 1, "score": 0}
   angle_count = len(CATEGORY_CONFIG[campaign["category"]]["angles"])
 
@@ -154,8 +85,8 @@ def build_strategies(campaign: dict, baseline: dict, drafts: list[dict], case_co
       "baseline",
       "Baseline Only",
       "Only output the baseline template creative without expansion or rerank.",
-      baseline,
-      [baseline],
+      baseline_with_diagnosis,
+      [baseline_with_diagnosis],
       angle_count,
     ),
     "llm-only": _build_strategy_payload(
