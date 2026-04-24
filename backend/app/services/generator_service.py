@@ -30,7 +30,7 @@ def merge_campaign(form: dict, case_context: dict) -> dict:
     "objective": form.get("objective") or case_context.get("objective") or "balanced",
     "platform": form.get("platform") or case_context.get("platform") or "feed",
     "tone": form.get("tone") or case_context.get("tone") or "premium",
-    "creativeCount": int(form.get("creativeCount") or 8),
+    "creativeCount": int(form.get("creativeCount") or 9),
     "impressions": int(form.get("impressions") or 100000),
     "experimentMode": form.get("experimentMode") or "full",
     "diversityWeight": float(form.get("diversityWeight") or 0.08),

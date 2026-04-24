@@ -407,6 +407,7 @@ select:focus {
 .creative-option {
   width: 100%;
   display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
   gap: 10px;
   padding: 13px;
   text-align: left;
@@ -416,6 +417,16 @@ select:focus {
   border-radius: 12px;
   cursor: pointer;
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.creative-option-thumb {
+  grid-row: span 3;
+  width: 92px;
+  height: 92px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: rgba(23, 32, 31, 0.04);
+  border: 1px solid rgba(23, 32, 31, 0.08);
 }
 
 .creative-option:hover,
@@ -579,6 +590,15 @@ select:focus {
 
   .creative-option-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .creative-option {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .creative-option-thumb {
+    width: 76px;
+    height: 76px;
   }
 
   .quality-signal-grid {

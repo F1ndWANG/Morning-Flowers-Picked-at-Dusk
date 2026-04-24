@@ -125,6 +125,11 @@ function renderCreativeQueue(dom, creatives, activeKey) {
       const metrics = creative.metrics || {};
       return `
         <button class="creative-option ${isActive ? "active" : ""}" type="button" data-creative-key="${escapeHtml(key)}">
+          ${
+            creative.imageAssetUrl
+              ? `<img class="creative-option-thumb" src="${escapeHtml(creative.imageAssetUrl)}" alt="creative ${creative.rank || index + 1}" />`
+              : ""
+          }
           <div class="creative-option-head">
             <span>#${creative.rank || index + 1}</span>
             <strong>${escapeHtml(creative.title || "未命名方案")}</strong>

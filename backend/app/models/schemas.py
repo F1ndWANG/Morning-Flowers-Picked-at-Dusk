@@ -24,7 +24,7 @@ class CampaignRequest(BaseModel):
   objective: str = "balanced"
   platform: str = "feed"
   tone: str = "premium"
-  creativeCount: int = Field(default=8, ge=4, le=12)
+  creativeCount: int = Field(default=9, ge=4, le=12)
   impressions: int = Field(default=100000, ge=1000)
   experimentMode: str = "full"
   diversityWeight: float = Field(default=0.08, ge=0, le=0.25)

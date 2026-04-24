@@ -1,3 +1,6 @@
+import base64
+import html
+
 from backend.app.core.catalog import PLATFORM_LABELS
 from backend.app.core.settings import get_settings
 from backend.app.services.provider_client import post_json
@@ -175,23 +178,102 @@ def _extract_image_url(response: dict) -> str:
   raise ValueError("Provider response does not contain a usable image URL or base64 payload.")
 
 
+def _truncate(text: str, limit: int) -> str:
+  value = str(text or "").replace("\n", " ").strip()
+  return value if len(value) <= limit else f"{value[:limit - 1]}…"
+
+
+def _build_placeholder_image_data_url(creative: dict, campaign: dict, index: int) -> str:
+  title = html.escape(_truncate(creative.get("title", "Ad Creative"), 28))
+  subtitle = html.escape(_truncate(creative.get("imageLine", creative.get("description", "")), 34))
+  brand = html.escape(_truncate(f"{campaign.get('brandName', '')} {campaign.get('productName', '')}", 28))
+  point_a = html.escape(_truncate((creative.get("sellingPoints") or [""])[0], 20))
+  point_b = html.escape(_truncate((creative.get("sellingPoints") or ["", ""])[1] if len(creative.get("sellingPoints") or []) > 1 else "", 20))
+  palette = creative.get("palette") or ["#176b63", "#bf6b2c", "#f4f7f6"]
+  primary = html.escape(str(palette[0]))
+  accent = html.escape(str(palette[1] if len(palette) > 1 else "#bf6b2c"))
+  bg = html.escape(str(palette[2] if len(palette) > 2 else "#f4f7f6"))
+  svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="{bg}"/>
+      <stop offset="52%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="{primary}" stop-opacity="0.18"/>
+    </linearGradient>
+    <radialGradient id="orb" cx="68%" cy="28%" r="46%">
+      <stop offset="0%" stop-color="{accent}" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="{accent}" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#17201f" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="64" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="64" fill="url(#orb)"/>
+  <circle cx="760" cy="220" r="168" fill="{accent}" opacity="0.16"/>
+  <circle cx="806" cy="278" r="94" fill="{primary}" opacity="0.16"/>
+  <rect x="86" y="94" width="852" height="836" rx="42" fill="#fffefa" opacity="0.78" filter="url(#shadow)"/>
+  <text x="128" y="164" font-family="Arial, Microsoft YaHei, sans-serif" font-size="28" fill="{accent}" font-weight="700" letter-spacing="4">CREATIVE #{index + 1:02d}</text>
+  <text x="128" y="238" font-family="Arial, Microsoft YaHei, sans-serif" font-size="46" fill="#17201f" font-weight="800">{brand}</text>
+  <foreignObject x="128" y="286" width="768" height="210">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,'Microsoft YaHei',sans-serif;font-size:62px;font-weight:900;line-height:1.12;color:#17201f;">{title}</div>
+  </foreignObject>
+  <rect x="128" y="538" width="348" height="56" rx="28" fill="{primary}" opacity="0.12"/>
+  <text x="154" y="575" font-family="Arial, Microsoft YaHei, sans-serif" font-size="26" fill="{primary}" font-weight="700">{point_a}</text>
+  <rect x="500" y="538" width="348" height="56" rx="28" fill="{accent}" opacity="0.12"/>
+  <text x="526" y="575" font-family="Arial, Microsoft YaHei, sans-serif" font-size="26" fill="{accent}" font-weight="700">{point_b}</text>
+  <foreignObject x="128" y="650" width="768" height="122">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,'Microsoft YaHei',sans-serif;font-size:34px;line-height:1.35;color:#60706d;">{subtitle}</div>
+  </foreignObject>
+  <rect x="128" y="820" width="250" height="68" rx="34" fill="{primary}"/>
+  <text x="172" y="864" font-family="Arial, Microsoft YaHei, sans-serif" font-size="28" fill="#ffffff" font-weight="800">立即查看</text>
+</svg>"""
+  encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+  return f"data:image/svg+xml;base64,{encoded}"
+
+
+def _attach_placeholder_images(creatives: list[dict], campaign: dict, state: str, source: str) -> list[dict]:
+  attached = []
+  for index, creative in enumerate(creatives):
+    attached.append(
+      {
+        **creative,
+        "imageAssetUrl": _build_placeholder_image_data_url(creative, campaign, index),
+        "imageMeta": {
+          **creative.get("imageMeta", {}),
+          "assetState": state,
+          "imageSource": source,
+          "apiMarked": True,
+          "promptVersion": PROMPT_VERSION,
+          "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
+        },
+      }
+    )
+  return attached
+
+
 def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_context: dict) -> tuple[list[dict], dict]:
   settings = get_settings()
   requested_mode = campaign.get("imageGenerationMode", "mock")
   prepared = attach_image_prompts(creatives, campaign, case_context)
 
   if requested_mode != "api":
+    prepared = _attach_placeholder_images(prepared, campaign, "generated-local", "local-svg-placeholder")
     return prepared, {
       "mode": "mock",
       "requestedMode": requested_mode,
-      "provider": "prompt-only",
+      "provider": "local-svg-placeholder",
       "configured": False,
       "usedApi": False,
       "apiMarked": True,
-      "note": "The system is currently returning only an image prompt. Configure AIGCSAR_IMAGE_API_KEY to generate a real sample image.",
+      "requestedCount": len(prepared),
+      "generatedCount": len(prepared),
+      "fallbackCount": len(prepared),
+      "note": "Image API is disabled, so every creative received an independent local SVG ad image.",
     }
 
   if not settings.image_api_key:
+    prepared = _attach_placeholder_images(prepared, campaign, "generated-local", "local-svg-placeholder")
     return prepared, {
       "mode": "mock-fallback",
       "requestedMode": requested_mode,
@@ -200,50 +282,75 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
       "usedApi": False,
       "apiMarked": True,
       "model": settings.image_model,
-      "note": "Image API mode was selected but AIGCSAR_IMAGE_API_KEY is missing, so the system returned only an image prompt.",
+      "requestedCount": len(prepared),
+      "generatedCount": len(prepared),
+      "fallbackCount": len(prepared),
+      "note": "Image API mode was selected but AIGCSAR_IMAGE_API_KEY is missing, so every creative received an independent local SVG ad image.",
     }
 
-  try:
-    winner = prepared[0]
-    payload = _build_image_payload(winner["imagePrompt"], settings)
-    response = post_json(
-      f"{settings.image_api_base.rstrip('/')}/images/generations",
-      payload,
-      settings.image_api_key,
-      timeout=180,
-    )
-    image_url = _extract_image_url(response)
-    prepared[0] = {
-      **winner,
-      "imageAssetUrl": image_url,
-        "imageMeta": {
-          "assetState": "generated",
-          "imageSource": "image-api",
-          "provider": settings.image_provider,
-          "model": settings.image_model,
-          "apiMarked": True,
-          "promptVersion": PROMPT_VERSION,
-          "promptFramework": list(winner.get("imagePromptDimensions", {}).keys()),
-        },
-      }
-    return prepared, {
-      "mode": "api",
-      "requestedMode": requested_mode,
-      "provider": settings.image_provider,
-      "configured": True,
-      "usedApi": True,
-      "apiMarked": True,
-      "model": settings.image_model,
-      "note": "Sample image generation succeeded through the real image API.",
-    }
-  except Exception as error:  # noqa: BLE001
-    return prepared, {
-      "mode": "api-error-fallback",
-      "requestedMode": requested_mode,
-      "provider": settings.image_provider,
-      "configured": True,
-      "usedApi": False,
-      "apiMarked": True,
-      "model": settings.image_model,
-      "note": f"Image generation failed and the system fell back to prompt-only output. Error: {error}",
-    }
+  generated = []
+  errors = []
+  for index, creative in enumerate(prepared):
+    try:
+      payload = _build_image_payload(creative["imagePrompt"], settings)
+      response = post_json(
+        f"{settings.image_api_base.rstrip('/')}/images/generations",
+        payload,
+        settings.image_api_key,
+        timeout=180,
+      )
+      image_url = _extract_image_url(response)
+      generated.append(
+        {
+          **creative,
+          "imageAssetUrl": image_url,
+          "imageMeta": {
+            "assetState": "generated",
+            "imageSource": "image-api",
+            "provider": settings.image_provider,
+            "model": settings.image_model,
+            "apiMarked": True,
+            "promptVersion": PROMPT_VERSION,
+            "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
+          },
+        }
+      )
+    except Exception as error:  # noqa: BLE001
+      errors.append(f"{creative.get('id', index)}: {error}")
+      generated.append(
+        {
+          **creative,
+          "imageAssetUrl": _build_placeholder_image_data_url(creative, campaign, index),
+          "imageMeta": {
+            "assetState": "api-error-local-fallback",
+            "imageSource": "local-svg-placeholder",
+            "provider": settings.image_provider,
+            "model": settings.image_model,
+            "apiMarked": True,
+            "promptVersion": PROMPT_VERSION,
+            "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
+            "error": str(error),
+          },
+        }
+      )
+
+  api_success_count = sum(1 for item in generated if item.get("imageMeta", {}).get("imageSource") == "image-api")
+  fallback_count = len(generated) - api_success_count
+  return generated, {
+    "mode": "api" if api_success_count == len(generated) else "api-partial-fallback",
+    "requestedMode": requested_mode,
+    "provider": settings.image_provider,
+    "configured": True,
+    "usedApi": api_success_count > 0,
+    "apiMarked": True,
+    "model": settings.image_model,
+    "requestedCount": len(generated),
+    "generatedCount": len(generated),
+    "apiSuccessCount": api_success_count,
+    "fallbackCount": fallback_count,
+    "note": (
+      f"Generated image assets for {len(generated)} creatives. "
+      f"API success: {api_success_count}, local fallback: {fallback_count}."
+    ),
+    "errors": errors[:3],
+  }

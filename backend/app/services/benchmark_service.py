@@ -22,7 +22,7 @@ def _build_request(sample: dict) -> dict:
     "objective": sample.get("objective", "balanced"),
     "platform": sample.get("platform", "feed"),
     "tone": sample.get("tone", "premium"),
-    "creativeCount": sample.get("creativeCount", 8),
+    "creativeCount": sample.get("creativeCount", 9),
     "impressions": sample.get("impressions", 100000),
     "experimentMode": sample.get("experimentMode", "full"),
     "diversityWeight": sample.get("diversityWeight", 0.08),

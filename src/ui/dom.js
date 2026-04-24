@@ -94,7 +94,7 @@ export function readForm(dom) {
     objective: dom.objective?.value || "balanced",
     platform: dom.platform?.value || "feed",
     tone: dom.tone?.value || "premium",
-    creativeCount: 6,
+    creativeCount: 9,
     impressions: 50000,
     experimentMode: "full",
     diversityWeight: 0.08,
