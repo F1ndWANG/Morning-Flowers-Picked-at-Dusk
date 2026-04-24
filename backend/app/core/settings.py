@@ -38,12 +38,17 @@ class IntegrationSettings:
   image_api_key: str
   image_model: str
   image_size: str
+  image_timeout_seconds: int
+  image_concurrency: int
+  image_cache_enabled: bool
 
 
 def get_settings() -> IntegrationSettings:
   _bootstrap_env()
   llm_model = os.getenv("AIGCSAR_LLM_MODEL", "MiniMax-M2.5")
   llm_api_base = os.getenv("AIGCSAR_LLM_API_BASE", "https://api.minimaxi.com/v1")
+  image_timeout_seconds = int(os.getenv("AIGCSAR_IMAGE_TIMEOUT_SECONDS", "90"))
+  image_concurrency = int(os.getenv("AIGCSAR_IMAGE_CONCURRENCY", "3"))
   return IntegrationSettings(
     llm_provider=os.getenv("AIGCSAR_LLM_PROVIDER", "minimax-openai-compatible"),
     llm_api_base=llm_api_base,
@@ -56,6 +61,9 @@ def get_settings() -> IntegrationSettings:
     image_api_key=os.getenv("AIGCSAR_IMAGE_API_KEY", ""),
     image_model=os.getenv("AIGCSAR_IMAGE_MODEL", "Qwen/Qwen-Image"),
     image_size=os.getenv("AIGCSAR_IMAGE_SIZE", "1328x1328"),
+    image_timeout_seconds=max(15, min(image_timeout_seconds, 240)),
+    image_concurrency=max(1, min(image_concurrency, 6)),
+    image_cache_enabled=os.getenv("AIGCSAR_IMAGE_CACHE_ENABLED", "true").lower() not in {"0", "false", "no"},
   )
 
 
@@ -99,9 +107,16 @@ def get_integration_catalog() -> dict:
       "configured": image_configured,
       "model": settings.image_model,
       "baseUrl": settings.image_api_base,
-      "requiredEnv": ["AIGCSAR_IMAGE_API_KEY", "AIGCSAR_IMAGE_MODEL", "AIGCSAR_IMAGE_API_BASE", "AIGCSAR_IMAGE_SIZE"],
+      "requiredEnv": [
+        "AIGCSAR_IMAGE_API_KEY",
+        "AIGCSAR_IMAGE_MODEL",
+        "AIGCSAR_IMAGE_API_BASE",
+        "AIGCSAR_IMAGE_SIZE",
+        "AIGCSAR_IMAGE_TIMEOUT_SECONDS",
+        "AIGCSAR_IMAGE_CONCURRENCY",
+      ],
       "apiMarked": True,
-      "note": "Image generation now supports a real SiliconFlow image API when configured, and falls back to prompt-only mode otherwise.",
+      "note": "Image generation supports SiliconFlow-compatible APIs, concurrent generation, local prompt caching, and SVG fallback.",
     },
     "raw": asdict(settings),
   }

@@ -3,6 +3,7 @@ backend/.env
 
 # Runtime outputs
 artifacts/
+backend/data/runtime/
 backend/data/snapshots/
 backend/*.log
 

@@ -1,5 +1,10 @@
 import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+import hashlib
 import html
+import json
+from pathlib import Path
 
 from backend.app.core.catalog import PLATFORM_LABELS
 from backend.app.core.settings import get_settings
@@ -7,6 +12,7 @@ from backend.app.services.provider_client import post_json
 
 
 PROMPT_VERSION = "structured-ad-prompt-v2"
+IMAGE_CACHE_PATH = Path(__file__).resolve().parents[2] / "data" / "runtime" / "image_cache.json"
 PROMPT_DIMENSION_LABELS = {
   "subject": "Subject",
   "environment": "Environment",
@@ -17,6 +23,31 @@ PROMPT_DIMENSION_LABELS = {
   "emotion": "Emotion",
   "atmosphere": "Atmosphere",
 }
+
+
+def _utc_now() -> str:
+  return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _build_cache_key(prompt: str, settings) -> str:
+  raw = "\n".join([settings.image_provider, settings.image_api_base, settings.image_model, settings.image_size, prompt])
+  return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _load_image_cache() -> dict:
+  if not IMAGE_CACHE_PATH.exists():
+    return {}
+  try:
+    return json.loads(IMAGE_CACHE_PATH.read_text(encoding="utf-8"))
+  except (OSError, json.JSONDecodeError):
+    return {}
+
+
+def _save_image_cache(cache: dict) -> None:
+  IMAGE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+  temp_path = IMAGE_CACHE_PATH.with_suffix(".tmp")
+  temp_path.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")
+  temp_path.replace(IMAGE_CACHE_PATH)
 
 
 def _build_subject(creative: dict, campaign: dict) -> str:
@@ -252,6 +283,70 @@ def _attach_placeholder_images(creatives: list[dict], campaign: dict, state: str
   return attached
 
 
+def _build_api_generated_creative(creative: dict, image_url: str, settings, source: str = "image-api") -> dict:
+  return {
+    **creative,
+    "imageAssetUrl": image_url,
+    "imageMeta": {
+      "assetState": "generated" if source == "image-api" else "cache-hit",
+      "imageSource": source,
+      "provider": settings.image_provider,
+      "model": settings.image_model,
+      "apiMarked": True,
+      "promptVersion": PROMPT_VERSION,
+      "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
+    },
+  }
+
+
+def _build_fallback_creative(creative: dict, campaign: dict, index: int, settings, error: Exception) -> dict:
+  return {
+    **creative,
+    "imageAssetUrl": _build_placeholder_image_data_url(creative, campaign, index),
+    "imageMeta": {
+      "assetState": "api-error-local-fallback",
+      "imageSource": "local-svg-placeholder",
+      "provider": settings.image_provider,
+      "model": settings.image_model,
+      "apiMarked": True,
+      "promptVersion": PROMPT_VERSION,
+      "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
+      "error": str(error),
+    },
+  }
+
+
+def _generate_single_image(index: int, creative: dict, campaign: dict, settings, cache: dict) -> tuple[int, dict, dict]:
+  cache_key = _build_cache_key(creative["imagePrompt"], settings)
+  cached = cache.get(cache_key) if settings.image_cache_enabled else None
+  if cached and cached.get("imageAssetUrl"):
+    return index, _build_api_generated_creative(creative, cached["imageAssetUrl"], settings, "image-cache"), {
+      "status": "cache-hit",
+      "cacheKey": cache_key,
+    }
+
+  try:
+    payload = _build_image_payload(creative["imagePrompt"], settings)
+    response = post_json(
+      f"{settings.image_api_base.rstrip('/')}/images/generations",
+      payload,
+      settings.image_api_key,
+      timeout=settings.image_timeout_seconds,
+    )
+    image_url = _extract_image_url(response)
+    return index, _build_api_generated_creative(creative, image_url, settings), {
+      "status": "api-success",
+      "cacheKey": cache_key,
+      "imageAssetUrl": image_url,
+    }
+  except Exception as error:  # noqa: BLE001
+    return index, _build_fallback_creative(creative, campaign, index, settings, error), {
+      "status": "fallback",
+      "error": f"{creative.get('id', index)}: {error}",
+      "cacheKey": cache_key,
+    }
+
+
 def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_context: dict) -> tuple[list[dict], dict]:
   settings = get_settings()
   requested_mode = campaign.get("imageGenerationMode", "mock")
@@ -288,69 +383,59 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
       "note": "Image API mode was selected but AIGCSAR_IMAGE_API_KEY is missing, so every creative received an independent local SVG ad image.",
     }
 
-  generated = []
+  generated = [None] * len(prepared)
   errors = []
-  for index, creative in enumerate(prepared):
-    try:
-      payload = _build_image_payload(creative["imagePrompt"], settings)
-      response = post_json(
-        f"{settings.image_api_base.rstrip('/')}/images/generations",
-        payload,
-        settings.image_api_key,
-        timeout=180,
-      )
-      image_url = _extract_image_url(response)
-      generated.append(
-        {
-          **creative,
-          "imageAssetUrl": image_url,
-          "imageMeta": {
-            "assetState": "generated",
-            "imageSource": "image-api",
-            "provider": settings.image_provider,
-            "model": settings.image_model,
-            "apiMarked": True,
-            "promptVersion": PROMPT_VERSION,
-            "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
-          },
+  cache_hits = 0
+  cache_updates = {}
+  cache = _load_image_cache() if settings.image_cache_enabled else {}
+
+  with ThreadPoolExecutor(max_workers=min(settings.image_concurrency, len(prepared))) as executor:
+    futures = [
+      executor.submit(_generate_single_image, index, creative, campaign, settings, cache)
+      for index, creative in enumerate(prepared)
+    ]
+    for future in as_completed(futures):
+      index, creative_result, trace = future.result()
+      generated[index] = creative_result
+      if trace["status"] == "cache-hit":
+        cache_hits += 1
+      elif trace["status"] == "api-success" and settings.image_cache_enabled:
+        cache_updates[trace["cacheKey"]] = {
+          "imageAssetUrl": trace["imageAssetUrl"],
+          "provider": settings.image_provider,
+          "model": settings.image_model,
+          "imageSize": settings.image_size,
+          "createdAt": _utc_now(),
         }
-      )
-    except Exception as error:  # noqa: BLE001
-      errors.append(f"{creative.get('id', index)}: {error}")
-      generated.append(
-        {
-          **creative,
-          "imageAssetUrl": _build_placeholder_image_data_url(creative, campaign, index),
-          "imageMeta": {
-            "assetState": "api-error-local-fallback",
-            "imageSource": "local-svg-placeholder",
-            "provider": settings.image_provider,
-            "model": settings.image_model,
-            "apiMarked": True,
-            "promptVersion": PROMPT_VERSION,
-            "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
-            "error": str(error),
-          },
-        }
-      )
+      elif trace["status"] == "fallback":
+        errors.append(trace["error"])
+
+  if cache_updates:
+    cache.update(cache_updates)
+    _save_image_cache(cache)
 
   api_success_count = sum(1 for item in generated if item.get("imageMeta", {}).get("imageSource") == "image-api")
-  fallback_count = len(generated) - api_success_count
+  cache_success_count = sum(1 for item in generated if item.get("imageMeta", {}).get("imageSource") == "image-cache")
+  fallback_count = len(generated) - api_success_count - cache_success_count
   return generated, {
-    "mode": "api" if api_success_count == len(generated) else "api-partial-fallback",
+    "mode": "api" if api_success_count + cache_success_count == len(generated) else "api-partial-fallback",
     "requestedMode": requested_mode,
     "provider": settings.image_provider,
     "configured": True,
     "usedApi": api_success_count > 0,
     "apiMarked": True,
     "model": settings.image_model,
+    "timeoutSeconds": settings.image_timeout_seconds,
+    "concurrency": settings.image_concurrency,
+    "cacheEnabled": settings.image_cache_enabled,
     "requestedCount": len(generated),
     "generatedCount": len(generated),
     "apiSuccessCount": api_success_count,
+    "cacheHitCount": cache_hits,
     "fallbackCount": fallback_count,
     "note": (
-      f"Generated image assets for {len(generated)} creatives. "
-      f"API success: {api_success_count}, local fallback: {fallback_count}."
+      f"Generated image assets for {len(generated)} creatives with concurrency={settings.image_concurrency}. "
+      f"API success: {api_success_count}, cache hit: {cache_hits}, local fallback: {fallback_count}."
     ),
     "errors": errors[:3],
   }

@@ -120,7 +120,16 @@ AIGCSAR_IMAGE_API_BASE=
 AIGCSAR_IMAGE_API_KEY=
 AIGCSAR_IMAGE_MODEL=
 AIGCSAR_IMAGE_SIZE=
+AIGCSAR_IMAGE_TIMEOUT_SECONDS=90
+AIGCSAR_IMAGE_CONCURRENCY=3
+AIGCSAR_IMAGE_CACHE_ENABLED=true
 ```
+
+Image generation performance controls:
+
+- `AIGCSAR_IMAGE_CONCURRENCY`: number of images generated in parallel. Recommended `3`; raise only if the provider rate limit allows it.
+- `AIGCSAR_IMAGE_TIMEOUT_SECONDS`: timeout for one image request. Lower values fail faster and use local fallback sooner.
+- `AIGCSAR_IMAGE_CACHE_ENABLED`: caches image results by provider, model, size, and prompt, so repeated tests reuse existing image URLs.
 
 `.env.local` is ignored by Git and should not be committed.
 
