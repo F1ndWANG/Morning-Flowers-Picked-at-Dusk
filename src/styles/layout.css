@@ -1,0 +1,153 @@
+.page-shell {
+  width: min(1440px, calc(100% - 36px));
+  margin: 20px auto 36px;
+}
+
+.hero,
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr;
+  gap: 24px;
+  padding: 32px;
+  background:
+    linear-gradient(140deg, rgba(255, 250, 244, 0.96), rgba(245, 232, 216, 0.88)),
+    var(--panel);
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 1.08fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.panel {
+  padding: 22px;
+  background: var(--panel);
+}
+
+.control-panel {
+  grid-row: span 2;
+}
+
+.lab-panel,
+.integration-panel,
+.governance-panel,
+.prompt-panel,
+.runtime-panel,
+.registry-panel,
+.benchmark-panel {
+  grid-column: 1 / -1;
+}
+
+.form-grid,
+.score-grid,
+.compare-board,
+.reason-panel,
+.governance-grid,
+.dataset-summary,
+.benchmark-summary,
+.dataset-list,
+.registry-grid,
+.context-grid,
+.upload-grid,
+.surface-grid,
+.runtime-model-grid,
+.prompt-grid,
+.creative-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.form-grid,
+.score-grid,
+.compare-board,
+.reason-panel,
+.governance-grid,
+.prompt-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dataset-summary,
+.runtime-model-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.benchmark-summary {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.dataset-list,
+.surface-grid,
+.registry-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.upload-grid,
+.context-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.creative-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.benchmark-rows {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.hero-compact {
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+.studio-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 1.08fr);
+  gap: 18px;
+  margin-top: 18px;
+  align-items: stretch;
+}
+
+.input-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.output-panel {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.compact-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.compact-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.compact-score-grid-quad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.lower-row-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(380px, 0.92fr) minmax(420px, 1.08fr);
+  gap: 18px;
+  align-items: stretch;
+}

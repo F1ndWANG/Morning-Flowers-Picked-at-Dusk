@@ -1,0 +1,27 @@
+backend/.env.local
+backend/.env
+
+# Runtime outputs
+artifacts/
+backend/data/snapshots/
+backend/*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node / frontend tooling
+node_modules/
+dist/
+build/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

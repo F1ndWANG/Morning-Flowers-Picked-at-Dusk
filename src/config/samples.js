@@ -1,0 +1,53 @@
+export const SAMPLE_PRODUCTS = {
+  skincare: {
+    label: "护肤品示例",
+    productName: "光感修护精华液",
+    brandName: "Lumiere Lab",
+    category: "beauty",
+    price: 299,
+    audience: "熬夜肌、想提亮肤色的都市白领女性",
+    objective: "balanced",
+    platform: "feed",
+    tone: "premium",
+    creativeCount: 8,
+    impressions: 100000,
+    diversityWeight: 0.08,
+    textGenerationMode: "mock",
+    imageGenerationMode: "mock",
+    highlights: "3%传明酸,烟酰胺提亮,7天改善暗沉,敏感肌可用,质地轻薄好吸收"
+  },
+  coffee: {
+    label: "咖啡机示例",
+    productName: "17Bar 全自动胶囊咖啡机",
+    brandName: "VANTA",
+    category: "appliance",
+    price: 1299,
+    audience: "追求效率与品质的年轻上班族",
+    objective: "ecpm",
+    platform: "search",
+    tone: "direct",
+    creativeCount: 8,
+    impressions: 80000,
+    diversityWeight: 0.1,
+    textGenerationMode: "mock",
+    imageGenerationMode: "mock",
+    highlights: "30秒出杯,19Bar 高压萃取,冷热双模式,机身仅18cm宽,胶囊自动回收"
+  },
+  course: {
+    label: "课程示例",
+    productName: "AI 求职冲刺营",
+    brandName: "DeepOffer",
+    category: "education",
+    price: 699,
+    audience: "准备转岗算法、希望快速补齐项目经验的求职者",
+    objective: "cvr",
+    platform: "video",
+    tone: "playful",
+    creativeCount: 8,
+    impressions: 120000,
+    diversityWeight: 0.12,
+    textGenerationMode: "mock",
+    imageGenerationMode: "mock",
+    highlights: "项目实战辅导,1对1简历优化,模拟面试,7天搭建作品集,社群答疑"
+  }
+};

@@ -1,0 +1,82 @@
+from backend.app.services.format_service import format_lift, format_percent
+
+
+def build_report(
+  campaign: dict,
+  case_context: dict,
+  strategies: dict,
+  active_strategy: dict,
+  integration_info: dict,
+  surface_predictions: dict,
+) -> str:
+  baseline = strategies["baseline"]["winner"]
+  winner = active_strategy["winner"]
+  best_surface = max(surface_predictions.values(), key=lambda item: item["ecpm"])
+  intervals = winner.get("metricIntervals", {})
+  ranking = winner.get("rankingBreakdown", {})
+
+  return "\n".join(
+    [
+      "# AIGC Creative Generation and Optimization System",
+      "",
+      "## 1. Case Input",
+      f"- Product: {campaign['brandName']} {campaign['productName']}",
+      f"- Case summary: {campaign['caseSummary']}",
+      f"- Audience: {campaign['audience']}",
+      f"- Platform: {campaign['platform']}",
+      f"- Objective: {campaign['objective']}",
+      f"- Highlights: {', '.join(campaign['highlights'])}",
+      "",
+      "## 2. Pipeline",
+      "- Multimodal understanding: support text, image, and audio case inputs and extract product semantics plus selling points.",
+      "- Creative generation: output titles, descriptions, selling points, and image-copy lines across multiple creative angles.",
+      "- Predictive ranking: estimate CTR, CVR, and eCPM, then rerank with quality and diversity constraints.",
+      "- Sample image generation: build an image prompt first and return a real image after an image API is configured.",
+      "",
+      "## 3. Current Result",
+      f"- Baseline CTR / CVR / eCPM: {format_percent(baseline['metrics']['ctr'])} / {format_percent(baseline['metrics']['cvr'])} / {baseline['metrics']['ecpm']:.1f}",
+      f"- Winner CTR / CVR / eCPM: {format_percent(winner['metrics']['ctr'])} / {format_percent(winner['metrics']['cvr'])} / {winner['metrics']['ecpm']:.1f}",
+      f"- Prediction confidence: {winner['metrics'].get('confidence', 0):.2f}",
+      f"- Risk-adjusted eCPM: {winner['metrics'].get('riskAdjustedEcpm', 0):.1f}",
+      f"- CTR interval: {format_percent(intervals.get('ctr', {}).get('lower', winner['metrics']['ctr']))} - {format_percent(intervals.get('ctr', {}).get('upper', winner['metrics']['ctr']))}",
+      f"- CVR interval: {format_percent(intervals.get('cvr', {}).get('lower', winner['metrics']['cvr']))} - {format_percent(intervals.get('cvr', {}).get('upper', winner['metrics']['cvr']))}",
+      f"- eCPM interval: {intervals.get('ecpm', {}).get('lower', winner['metrics']['ecpm']):.1f} - {intervals.get('ecpm', {}).get('upper', winner['metrics']['ecpm']):.1f}",
+      f"- CTR lift: {format_lift(winner['metrics']['ctr'], baseline['metrics']['ctr'])}",
+      f"- CVR lift: {format_lift(winner['metrics']['cvr'], baseline['metrics']['cvr'])}",
+      f"- eCPM lift: {format_lift(winner['metrics']['ecpm'], baseline['metrics']['ecpm'])}",
+      f"- Creative coverage: {active_strategy['metrics']['coverageRate'] * 100:.0f}%",
+      f"- Average diversity: {active_strategy['metrics']['averageDiversity']:.2f}",
+      f"- Average confidence: {active_strategy['metrics'].get('averageConfidence', 0):.2f}",
+      f"- Rerank base score / final score: {ranking.get('baseScore', 0):.4f} / {ranking.get('finalScore', 0):.4f}",
+      f"- MMR novelty penalty: {ranking.get('noveltyPenalty', 0):.4f}",
+      "",
+      "## 4. Surface Recommendation",
+      f"- Best projected surface: {best_surface['label']} with predicted eCPM {best_surface['ecpm']:.1f}",
+      f"- Search CTR: {format_percent(surface_predictions['search']['ctr'])}",
+      f"- Feed CTR: {format_percent(surface_predictions['feed']['ctr'])}",
+      f"- Video CVR: {format_percent(surface_predictions['video']['cvr'])}",
+      f"- Mall eCPM: {surface_predictions['mall']['ecpm']:.1f}",
+      "",
+      "## 5. API Integration",
+      f"- Multimodal understanding: {integration_info['multimodalUnderstanding']['note']}",
+      f"- Text generation: {integration_info['textGeneration']['note']}",
+      f"- Image generation: {integration_info['imageGeneration']['note']}",
+      "",
+      "## 6. Top1 Creative",
+      f"- Title: {winner['title']}",
+      f"- Description: {winner['description']}",
+      f"- Image line: {winner['imageLine']}",
+      f"- Selling points: {', '.join(winner['sellingPoints'])}",
+      f"- Image prompt: {winner.get('imagePrompt', 'Not generated')}",
+      f"- Image prompt framework: {', '.join(winner.get('imagePromptDimensions', {}).keys()) or 'Not generated'}",
+      f"- Selection reasons: {'; '.join(winner['reasons'])}",
+      "",
+      "## 7. Case Understanding Summary",
+      f"- Extracted brand: {case_context['brandName']}",
+      f"- Extracted product: {case_context['productName']}",
+      f"- Extracted category: {case_context['category']}",
+      f"- Extracted signals: {', '.join(case_context.get('caseSignals', [])) or 'None'}",
+      f"- Uploaded assets: {case_context.get('modalityStats', {}).get('totalAssetCount', 0)}",
+      f"- Transcript available: {'Yes' if case_context.get('transcriptText') else 'No'}",
+    ]
+  )

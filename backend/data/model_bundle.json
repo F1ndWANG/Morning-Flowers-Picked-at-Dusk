@@ -1,0 +1,77 @@
+{
+  "modelMeta": {
+    "modelId": "aigcsar-linear-v2",
+    "family": "linear-runtime",
+    "version": "2.0.0",
+    "trainedAt": "2026-04-22",
+    "owner": "AIGCSAR",
+    "description": "Rule-driven linear inference runtime for CTR/CVR/eCPM prediction with explainable feature weights.",
+    "supportedObjectives": ["balanced", "ctr", "cvr", "ecpm"],
+    "supportedSurfaces": ["feed", "search", "video", "mall"],
+    "featureNames": [
+      "numberSignal",
+      "brandSignal",
+      "audienceSignal",
+      "highlightSignal",
+      "claritySignal",
+      "urgencySignal",
+      "trustSignal",
+      "surfaceSignal",
+      "caseAlignmentSignal",
+      "priceSignal",
+      "ctaSignal",
+      "readabilitySignal",
+      "assetSignal",
+      "multimodalAlignmentSignal"
+    ]
+  },
+  "featureWeights": {
+    "ctr": {
+      "base": 0.014,
+      "numberSignal": 0.004,
+      "brandSignal": 0.002,
+      "audienceSignal": 0.003,
+      "highlightSignal": 0.006,
+      "claritySignal": 0.005,
+      "urgencySignal": 0.003,
+      "trustSignal": 0.002,
+      "surfaceSignal": 0.004,
+      "caseAlignmentSignal": 0.004,
+      "ctaSignal": 0.0032,
+      "readabilitySignal": 0.0036,
+      "assetSignal": 0.0025,
+      "multimodalAlignmentSignal": 0.0043
+    },
+    "cvr": {
+      "base": 0.010,
+      "brandSignal": 0.003,
+      "highlightSignal": 0.004,
+      "trustSignal": 0.004,
+      "claritySignal": 0.002,
+      "priceSignal": 0.002,
+      "surfaceSignal": 0.002,
+      "caseAlignmentSignal": 0.005,
+      "ctaSignal": 0.0015,
+      "readabilitySignal": 0.0022,
+      "assetSignal": 0.0028,
+      "multimodalAlignmentSignal": 0.0038
+    }
+  },
+  "objectiveWeights": {
+    "balanced": { "ctr": 0.36, "cvr": 0.34, "ecpm": 0.22 },
+    "ctr": { "ctr": 0.55, "cvr": 0.15, "ecpm": 0.18 },
+    "cvr": { "ctr": 0.18, "cvr": 0.50, "ecpm": 0.22 },
+    "ecpm": { "ctr": 0.22, "cvr": 0.22, "ecpm": 0.44 }
+  },
+  "surfaceWeights": {
+    "feed": 1.00,
+    "search": 1.05,
+    "video": 1.03,
+    "mall": 1.01
+  },
+  "calibration": {
+    "ctr": { "min": 0.006, "max": 0.12 },
+    "cvr": { "min": 0.004, "max": 0.08 },
+    "ecpmMultiplier": 1000
+  }
+}

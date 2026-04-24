@@ -1,0 +1,105 @@
+{
+  "modelMeta": {
+    "modelId": "aigcsar-artifact-bundle-v1",
+    "family": "artifact-runtime",
+    "version": "3.0.0",
+    "trainedAt": "2026-04-21",
+    "owner": "AIGCSAR",
+    "description": "Artifact-backed runtime that simulates loading a trained prediction bundle for CTR and CVR inference.",
+    "supportedObjectives": ["balanced", "ctr", "cvr", "ecpm"],
+    "supportedSurfaces": ["feed", "search", "video", "mall"],
+    "featureNames": [
+      "numberSignal",
+      "brandSignal",
+      "audienceSignal",
+      "highlightSignal",
+      "claritySignal",
+      "urgencySignal",
+      "trustSignal",
+      "surfaceSignal",
+      "caseAlignmentSignal",
+      "priceSignal",
+      "ctaSignal",
+      "readabilitySignal",
+      "assetSignal",
+      "multimodalAlignmentSignal"
+    ]
+  },
+  "runtimeConfig": {
+    "predictorType": "artifact-bundle",
+    "artifactFormat": "json-bundle",
+    "featureOrder": [
+      "numberSignal",
+      "brandSignal",
+      "audienceSignal",
+      "highlightSignal",
+      "claritySignal",
+      "urgencySignal",
+      "trustSignal",
+      "surfaceSignal",
+      "caseAlignmentSignal",
+      "priceSignal",
+      "ctaSignal",
+      "readabilitySignal",
+      "assetSignal",
+      "multimodalAlignmentSignal"
+    ]
+  },
+  "metricHeads": {
+    "ctr": {
+      "intercept": 0.013,
+      "coefficients": {
+        "numberSignal": 0.0038,
+        "brandSignal": 0.0019,
+        "audienceSignal": 0.0031,
+        "highlightSignal": 0.0053,
+        "claritySignal": 0.0045,
+        "urgencySignal": 0.0026,
+        "trustSignal": 0.0021,
+        "surfaceSignal": 0.0036,
+        "caseAlignmentSignal": 0.0044,
+        "priceSignal": 0.0008,
+        "ctaSignal": 0.003,
+        "readabilitySignal": 0.0034,
+        "assetSignal": 0.0024,
+        "multimodalAlignmentSignal": 0.0042
+      }
+    },
+    "cvr": {
+      "intercept": 0.011,
+      "coefficients": {
+        "numberSignal": 0.0006,
+        "brandSignal": 0.0028,
+        "audienceSignal": 0.0011,
+        "highlightSignal": 0.0044,
+        "claritySignal": 0.0015,
+        "urgencySignal": 0.0008,
+        "trustSignal": 0.0047,
+        "surfaceSignal": 0.0018,
+        "caseAlignmentSignal": 0.0055,
+        "priceSignal": 0.0024,
+        "ctaSignal": 0.0013,
+        "readabilitySignal": 0.002,
+        "assetSignal": 0.003,
+        "multimodalAlignmentSignal": 0.0043
+      }
+    }
+  },
+  "objectiveWeights": {
+    "balanced": { "ctr": 0.34, "cvr": 0.36, "ecpm": 0.22 },
+    "ctr": { "ctr": 0.58, "cvr": 0.12, "ecpm": 0.16 },
+    "cvr": { "ctr": 0.16, "cvr": 0.56, "ecpm": 0.18 },
+    "ecpm": { "ctr": 0.24, "cvr": 0.20, "ecpm": 0.42 }
+  },
+  "surfaceWeights": {
+    "feed": 1.01,
+    "search": 1.06,
+    "video": 1.02,
+    "mall": 1.02
+  },
+  "calibration": {
+    "ctr": { "min": 0.006, "max": 0.115 },
+    "cvr": { "min": 0.004, "max": 0.083 },
+    "ecpmMultiplier": 1000
+  }
+}

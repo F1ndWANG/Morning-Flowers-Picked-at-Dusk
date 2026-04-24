@@ -1,0 +1,106 @@
+export const CATEGORY_CONFIG = {
+  beauty: {
+    label: "美妆护肤",
+    channels: ["信息流", "搜索广告", "短视频"],
+    angles: ["成分", "功效", "场景", "口碑", "价格", "体验"],
+    hooks: ["暗沉急救", "通勤素颜感", "熬夜修护", "敏感肌安心用"],
+    visuals: ["微光玻璃瓶", "晨雾肌肤特写", "实验室滴管", "金色液滴"],
+    cta: ["立即试用", "查看限时礼盒", "领取体验装"],
+    bidFactor: 1.28,
+    platformFit: {
+      feed: 1.04,
+      search: 1.08,
+      video: 1.02,
+      mall: 1.01
+    }
+  },
+  appliance: {
+    label: "家电数码",
+    channels: ["搜索广告", "商城推荐", "信息流"],
+    angles: ["效率", "功能", "价格", "场景", "设计", "口碑"],
+    hooks: ["晨间效率升级", "解放双手", "一键操作", "厨房质感提升"],
+    visuals: ["金属拉丝机身", "晨光厨房台面", "蒸汽特写", "极简控制面板"],
+    cta: ["查看参数", "领取补贴价", "立即下单"],
+    bidFactor: 1.12,
+    platformFit: {
+      feed: 1.01,
+      search: 1.09,
+      video: 0.98,
+      mall: 1.08
+    }
+  },
+  education: {
+    label: "知识付费",
+    channels: ["信息流", "短视频", "搜索广告"],
+    angles: ["成绩", "效率", "方法", "案例", "优惠", "陪伴"],
+    hooks: ["7天建立节奏", "碎片时间进步", "系统化训练", "真实案例可复用"],
+    visuals: ["手写笔记本", "专注学习桌面", "冲刺计划卡片", "进步曲线"],
+    cta: ["领取试听", "查看课程大纲", "立即报名"],
+    bidFactor: 1.05,
+    platformFit: {
+      feed: 1.03,
+      search: 1.06,
+      video: 1.07,
+      mall: 0.96
+    }
+  },
+  sports: {
+    label: "运动户外",
+    channels: ["信息流", "短视频", "商城推荐"],
+    angles: ["性能", "轻量", "场景", "对比", "价格", "设计"],
+    hooks: ["进阶训练", "通勤运动两穿", "轻量爆发", "长距离更稳"],
+    visuals: ["风动轨迹", "城市夜跑", "鞋底纹路特写", "高能剪影"],
+    cta: ["立即开练", "查看配色", "抢先试穿"],
+    bidFactor: 1.18,
+    platformFit: {
+      feed: 1.02,
+      search: 0.98,
+      video: 1.1,
+      mall: 1.03
+    }
+  }
+};
+
+export const TONE_CONFIG = {
+  premium: {
+    label: "高级信任感",
+    prefixes: ["高阶修护", "专业级", "进阶之选", "口碑精选"],
+    suffixes: ["让效果更可信", "把体验做得更细", "在细节里拉开差距"],
+    colorSet: ["#81513c", "#d96c2f", "#f1b271"]
+  },
+  playful: {
+    label: "轻快种草感",
+    prefixes: ["现在就想试", "种草预警", "一用就上头", "轻松拿捏"],
+    suffixes: ["把好感拉满", "让转化更轻盈", "看一眼就想点开"],
+    colorSet: ["#26766f", "#ef8b3a", "#ffe4aa"]
+  },
+  direct: {
+    label: "直接转化感",
+    prefixes: ["下单理由很充足", "别再反复犹豫", "现在买更划算", "转化拉满"],
+    suffixes: ["让购买决策更快", "把利益点说透", "冲刺成交效率"],
+    colorSet: ["#394455", "#cc5932", "#f5c46e"]
+  }
+};
+
+export const OBJECTIVE_LABELS = {
+  balanced: "平衡 CTR/CVR",
+  ctr: "点击优先",
+  cvr: "转化优先",
+  ecpm: "收益优先"
+};
+
+export const PLATFORM_LABELS = {
+  feed: "信息流",
+  search: "搜索广告",
+  video: "短视频",
+  mall: "商城推荐"
+};
+
+export const STRATEGY_LABELS = {
+  full: "Full Pipeline",
+  "llm-only": "LLM Only",
+  "predictive-only": "Generate + Predict",
+  baseline: "Baseline Only"
+};
+
+export const STRATEGY_ORDER = ["baseline", "llm-only", "predictive-only", "full"];

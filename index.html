@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIGCSAR Ad Creative Studio</title>
+    <link rel="stylesheet" href="./src/styles/main.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero hero-compact">
+        <div class="hero-copy">
+          <p class="eyebrow">AIGC x 搜广推</p>
+          <h1>广告创意生成与效果预测工作台</h1>
+          <p class="hero-desc">
+            输入商品案例或上传素材，系统会完成案例理解、广告文案生成、广告图生成，以及 CTR / CVR / eCPM 与搜广推分面的效果预测。
+          </p>
+          <div class="hero-actions">
+            <button class="ghost-btn" id="sample-skincare">护肤案例</button>
+            <button class="ghost-btn" id="sample-coffee">咖啡机案例</button>
+            <button class="ghost-btn" id="sample-course">课程案例</button>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div class="metric-tile">
+            <span>Backend Status</span>
+            <strong id="runtime-backend">Checking</strong>
+          </div>
+          <div class="metric-tile">
+            <span>Execution Mode</span>
+            <strong id="runtime-mode">Backend API</strong>
+          </div>
+          <div class="metric-tile">
+            <span>API Base</span>
+            <strong id="runtime-hint">http://127.0.0.1:8000</strong>
+          </div>
+        </div>
+      </header>
+
+      <main class="studio-grid">
+        <section class="panel input-panel">
+          <div class="section-title">
+            <p>Case Input</p>
+            <h2>广告输入</h2>
+          </div>
+
+          <label class="textarea-wrap">
+            案例描述
+            <textarea
+              id="case-text"
+              rows="6"
+              placeholder="输入商品、品牌、目标人群、风格偏好、活动信息，或者直接描述你想要的广告主题。"
+            ></textarea>
+          </label>
+
+          <div class="upload-grid">
+            <label>
+              上传图片素材
+              <input id="case-image" type="file" accept="image/*" />
+            </label>
+            <label>
+              上传音频素材
+              <input id="case-audio" type="file" accept="audio/*" />
+            </label>
+          </div>
+
+          <div class="form-grid compact-form-grid">
+            <label>
+              商品名称
+              <input id="product-name" type="text" value="Radiance Repair Serum" />
+            </label>
+            <label>
+              品牌名称
+              <input id="brand-name" type="text" value="Lumiere Lab" />
+            </label>
+            <label>
+              类目
+              <select id="category"></select>
+            </label>
+            <label>
+              价格
+              <input id="price" type="number" min="0" value="299" />
+            </label>
+            <label>
+              目标人群
+              <input id="audience" type="text" value="Urban women who stay up late and want brighter skin tone." />
+            </label>
+            <label>
+              优化目标
+              <select id="objective"></select>
+            </label>
+            <label>
+              主投场景
+              <select id="platform"></select>
+            </label>
+            <label>
+              风格
+              <select id="tone"></select>
+            </label>
+            <label>
+              案例理解
+              <select id="case-understanding-mode">
+                <option value="api" selected>多模态 API</option>
+                <option value="mock">本地解析</option>
+              </select>
+            </label>
+            <label>
+              文本生成
+              <select id="text-generation-mode">
+                <option value="api" selected>Real LLM API</option>
+                <option value="mock">Mock Template</option>
+              </select>
+            </label>
+            <label>
+              图片生成
+              <select id="image-generation-mode">
+                <option value="api" selected>Image API</option>
+                <option value="mock">Prompt Only</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="textarea-wrap">
+            卖点提示
+            <textarea id="highlights" rows="4">3% tranexamic acid, ceramide support, 7-day brightening, gentle for sensitive skin, light texture</textarea>
+          </label>
+
+          <div class="cta-row">
+            <button class="primary-btn" id="generate-btn">生成广告并预测效果</button>
+          </div>
+          <p class="helper-text" id="status-text">页面将调用后端生成广告文案、广告图，并返回搜广推效果预测。</p>
+        </section>
+
+        <section class="panel output-panel">
+          <div class="section-title">
+            <p>Creative Output</p>
+            <h2>广告结果</h2>
+          </div>
+
+          <article class="result-image-panel result-image-panel-wide">
+            <div class="image-panel-head">
+              <span>生成广告图</span>
+              <strong>大图展示</strong>
+            </div>
+            <div class="sample-image-shell hero-image-shell">
+              <img id="sample-image" alt="generated ad sample" />
+              <p id="sample-image-hint" class="helper-text">广告图生成后会显示在这里；如果图片接口未返回图片，系统会保留图片文案提示。</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="lower-row-grid">
+          <article class="panel candidate-panel lower-card">
+            <div class="section-title section-title-with-action">
+              <div>
+                <p>Creative Queue</p>
+                <h2>候选创意方案</h2>
+              </div>
+              <div class="queue-summary">
+                <span id="creative-count">0 套方案</span>
+                <strong id="active-rank">等待生成</strong>
+              </div>
+            </div>
+            <p class="helper-text compact-helper">
+              系统会为同一个任务生成多套广告标题、描述、卖点和图片文案，并按 CTR / CVR / eCPM / 多样性进行 rerank。点击下方卡片切换查看每套方案。
+            </p>
+            <div id="creative-list" class="creative-option-list"></div>
+          </article>
+
+          <article class="panel result-copy-panel lower-card">
+            <div class="section-title section-title-with-action">
+              <div>
+                <p>Selected Creative</p>
+                <h2>广告标题栏</h2>
+              </div>
+              <div class="queue-summary selected-score">
+                <span>综合排序分</span>
+                <strong id="selected-score">0.000</strong>
+              </div>
+            </div>
+
+            <div class="creative-block">
+              <span class="field-label">广告标题</span>
+              <h3 id="winner-name" class="result-title">等待生成</h3>
+            </div>
+
+            <div class="creative-block">
+              <span class="field-label">广告描述</span>
+              <p id="winner-copy" class="result-copy">点击上方按钮或填写案例后开始生成。</p>
+            </div>
+
+            <div class="creative-block">
+              <span class="field-label">卖点</span>
+              <div id="winner-selling-points" class="selling-points result-points"></div>
+            </div>
+
+            <div class="creative-block">
+              <span class="field-label">图片文案</span>
+              <p id="winner-image-line" class="result-image-line">生成后会显示图片文案。</p>
+            </div>
+
+            <div class="score-grid compact-score-grid compact-score-grid-inline compact-score-grid-quad">
+              <article class="score-card">
+                <span>CTR 预测</span>
+                <strong id="top-ctr">0.00%</strong>
+                <small id="ctr-lift">点击率预估</small>
+              </article>
+              <article class="score-card">
+                <span>CVR 预测</span>
+                <strong id="top-cvr">0.00%</strong>
+                <small id="cvr-lift">转化率预估</small>
+              </article>
+              <article class="score-card">
+                <span>eCPM 预测</span>
+                <strong id="top-ecpm">0.0</strong>
+                <small id="ecpm-lift">收益效率预估</small>
+              </article>
+              <article class="score-card score-card-confidence">
+                <span>Confidence</span>
+                <strong id="top-confidence">0.00</strong>
+                <small id="confidence-hint">预测置信度</small>
+              </article>
+            </div>
+
+            <div class="prediction-band">
+              <article>
+                <span>CTR 区间</span>
+                <strong id="ctr-interval">0.00% - 0.00%</strong>
+              </article>
+              <article>
+                <span>CVR 区间</span>
+                <strong id="cvr-interval">0.00% - 0.00%</strong>
+              </article>
+              <article>
+                <span>eCPM 区间</span>
+                <strong id="ecpm-interval">0.0 - 0.0</strong>
+              </article>
+              <article>
+                <span>风险调整 eCPM</span>
+                <strong id="risk-adjusted-ecpm">0.0</strong>
+              </article>
+            </div>
+
+            <div class="insight-panel">
+              <div class="insight-block">
+                <span class="field-label">案例理解摘要</span>
+                <p id="case-insight-summary" class="insight-copy">系统会在生成后展示摘要。</p>
+              </div>
+              <div class="insight-grid">
+                <div class="insight-chip">
+                  <span>素材输入</span>
+                  <strong id="case-insight-assets">0</strong>
+                </div>
+                <div class="insight-chip">
+                  <span>转写文本</span>
+                  <strong id="case-insight-transcript">无</strong>
+                </div>
+                <div class="insight-chip">
+                  <span>理解模式</span>
+                  <strong id="case-insight-mode">API</strong>
+                </div>
+              </div>
+              <div class="creative-block">
+                <span class="field-label">入选原因</span>
+                <div id="selection-reasons" class="selling-points reason-chip-list"></div>
+              </div>
+            </div>
+          </article>
+
+          <section class="panel surface-panel lower-card">
+            <div class="section-title">
+              <p>Forecast</p>
+              <h2>搜广推效果预测</h2>
+            </div>
+            <div id="surface-grid" class="surface-grid"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./src/app/main.js"></script>
+  </body>
+</html>

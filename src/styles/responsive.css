@@ -1,0 +1,90 @@
+@media (max-width: 1180px) {
+  .studio-grid,
+  .dashboard,
+  .hero,
+  .prompt-grid,
+  .dataset-summary,
+  .benchmark-summary,
+  .runtime-model-grid,
+  .upload-grid,
+  .context-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .input-panel,
+  .output-panel {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .lower-row-grid,
+  .compact-score-grid,
+  .compact-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-score-grid-quad,
+  .insight-grid,
+  .prompt-dimension-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .creative-grid,
+  .dataset-list,
+  .surface-grid,
+  .registry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .runtime-card-wide {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .page-shell {
+    width: min(100% - 20px, 1440px);
+    margin: 10px auto 24px;
+  }
+
+  .panel,
+  .hero {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .studio-grid,
+  .lower-row-grid,
+  .form-grid,
+  .score-grid,
+  .compare-board,
+  .reason-panel,
+  .governance-grid,
+  .dataset-summary,
+  .dataset-list,
+  .benchmark-summary,
+  .surface-grid,
+  .registry-grid,
+  .runtime-model-grid,
+  .creative-grid,
+  .asset-grid,
+  .compact-score-grid-quad,
+  .insight-grid,
+  .prompt-dimension-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-image-shell {
+    min-height: 360px;
+  }
+
+  .hero-image-shell #sample-image {
+    min-height: 320px;
+    max-height: 320px;
+  }
+
+  .metric-row,
+  .surface-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

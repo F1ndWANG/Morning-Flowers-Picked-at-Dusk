@@ -1,0 +1,41 @@
+{
+  "activeModelId": "aigcsar-linear-v2",
+  "models": [
+    {
+      "modelId": "aigcsar-linear-v2",
+      "family": "linear-runtime",
+      "status": "active",
+      "artifactFile": "model_bundle.json",
+      "label": "Linear Runtime V2",
+      "description": "Default online-ready runtime with stronger explainability and surface-fit behavior.",
+      "notes": [
+        "Suitable for interview demos with explainable prediction",
+        "Supports balanced, ctr, cvr, and ecpm objectives"
+      ]
+    },
+    {
+      "modelId": "aigcsar-linear-conservative-v1",
+      "family": "linear-runtime",
+      "status": "candidate",
+      "artifactFile": "model_bundle_conservative.json",
+      "label": "Linear Conservative V1",
+      "description": "Candidate runtime with lower click volatility and stronger conversion stability.",
+      "notes": [
+        "Suitable for conversion-first scenarios",
+        "Useful for offline benchmark comparison"
+      ]
+    },
+    {
+      "modelId": "aigcsar-artifact-bundle-v1",
+      "family": "artifact-runtime",
+      "status": "candidate",
+      "artifactFile": "model_bundle_artifact_v1.json",
+      "label": "Artifact Bundle V1",
+      "description": "Artifact-backed predictor that simulates trained bundle loading for formal inference.",
+      "notes": [
+        "Uses artifact-bundle predictor instead of inline linear weights",
+        "Suitable for demonstrating migration toward trained-model inference"
+      ]
+    }
+  ]
+}
