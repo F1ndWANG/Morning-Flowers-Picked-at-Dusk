@@ -12,6 +12,7 @@ The system accepts a product campaign task, generates multiple ad creative candi
 - **Text generation modes**: supports local mock templates and real LLM API integration.
 - **Image generation pipeline**: builds structured image prompts internally and optionally calls an image generation API. The frontend only shows final ad images or image-copy lines.
 - **Image cost control**: image API generation can be limited to the top-ranked creative by default, or expanded to all candidate creatives when needed.
+- **Image model selection**: SiliconFlow image models are listed by ascending estimated price, with low-cost models selected by default and higher-quality models available for final validation.
 - **Performance prediction**: predicts CTR, CVR, eCPM, confidence, confidence intervals, and risk-adjusted eCPM for each creative.
 - **Search/ads/recommendation forecasting**: estimates each creative's performance on search ads, feed ads, video recommendation, and mall recommendation surfaces.
 - **Multi-objective reranking**: ranks creative candidates using CTR, CVR, eCPM, risk-adjusted eCPM, confidence, compliance score, and diversity-aware MMR penalty.
@@ -182,6 +183,13 @@ Image generation count:
 
 - Default: generate only the top-ranked creative image with the image API, while other candidates use local placeholder images.
 - Optional: switch to generating all candidate images when full visual comparison is required.
+
+Image model selection:
+
+- Default low-cost model: `black-forest-labs/FLUX.1-schnell`.
+- Cost-effective option: `Tongyi-MAI/Z-Image-Turbo`.
+- Higher text-layout option: `Qwen/Qwen-Image`.
+- The frontend model list is ordered by estimated SiliconFlow price from low to high.
 
 ## Prediction Model Notes
 

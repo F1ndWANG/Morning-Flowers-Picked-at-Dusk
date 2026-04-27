@@ -32,6 +32,7 @@ class CampaignRequest(BaseModel):
   textGenerationMode: str = "mock"
   imageGenerationMode: str = "mock"
   imageGenerationCount: Literal["top1", "all"] = "top1"
+  imageModel: str = "black-forest-labs/FLUX.1-schnell"
 
   @model_validator(mode="after")
   def validate_case_presence(self) -> "CampaignRequest":

@@ -31,6 +31,7 @@ def _build_request(sample: dict) -> dict:
     "textGenerationMode": sample.get("textGenerationMode", "mock"),
     "imageGenerationMode": sample.get("imageGenerationMode", "mock"),
     "imageGenerationCount": sample.get("imageGenerationCount", "top1"),
+    "imageModel": sample.get("imageModel", "black-forest-labs/FLUX.1-schnell"),
   }
 
 

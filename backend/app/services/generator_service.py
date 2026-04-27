@@ -40,6 +40,7 @@ def merge_campaign(form: dict, case_context: dict) -> dict:
     "textGenerationMode": form.get("textGenerationMode", "mock"),
     "imageGenerationMode": form.get("imageGenerationMode", "mock"),
     "imageGenerationCount": form.get("imageGenerationCount", "top1"),
+    "imageModel": form.get("imageModel", "black-forest-labs/FLUX.1-schnell"),
   }
 
 

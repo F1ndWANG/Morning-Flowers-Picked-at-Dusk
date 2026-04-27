@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from backend.app.core.catalog import PLATFORM_LABELS
-from backend.app.core.settings import get_settings
+from backend.app.core.settings import get_image_model_config, get_settings
 from backend.app.services.provider_client import post_json
 
 
@@ -29,8 +29,21 @@ def _utc_now() -> str:
   return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def _build_cache_key(prompt: str, settings) -> str:
-  raw = "\n".join([settings.image_provider, settings.image_api_base, settings.image_model, settings.image_size, prompt])
+def _resolve_image_model(campaign: dict, settings) -> dict:
+  selected_model = campaign.get("imageModel") or settings.image_model
+  return get_image_model_config(selected_model)
+
+
+def _resolve_image_size(campaign: dict, settings, model_config: dict) -> str:
+  if campaign.get("imageSize"):
+    return campaign["imageSize"]
+  if campaign.get("imageModel"):
+    return model_config["defaultSize"]
+  return settings.image_size or model_config["defaultSize"]
+
+
+def _build_cache_key(prompt: str, settings, model_config: dict, image_size: str) -> str:
+  raw = "\n".join([settings.image_provider, settings.image_api_base, model_config["modelId"], image_size, prompt])
   return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -175,19 +188,19 @@ def attach_image_prompts(creatives: list[dict], campaign: dict, case_context: di
   return attached
 
 
-def _build_image_payload(prompt: str, settings) -> dict:
+def _build_image_payload(prompt: str, settings, model_config: dict, image_size: str) -> dict:
   payload = {
-    "model": settings.image_model,
+    "model": model_config["modelId"],
     "prompt": prompt,
-    "image_size": settings.image_size,
+    "image_size": image_size,
   }
 
-  if settings.image_model == "Kwai-Kolors/Kolors":
+  if model_config["modelId"] == "Kwai-Kolors/Kolors":
     payload["batch_size"] = 1
     payload["num_inference_steps"] = 28
     payload["guidance_scale"] = 8
 
-  if settings.image_model == "Qwen/Qwen-Image":
+  if model_config["modelId"] == "Qwen/Qwen-Image":
     payload["num_inference_steps"] = 50
     payload["guidance_scale"] = 4
 
@@ -283,7 +296,14 @@ def _attach_placeholder_images(creatives: list[dict], campaign: dict, state: str
   return attached
 
 
-def _build_api_generated_creative(creative: dict, image_url: str, settings, source: str = "image-api") -> dict:
+def _build_api_generated_creative(
+  creative: dict,
+  image_url: str,
+  settings,
+  model_config: dict,
+  image_size: str,
+  source: str = "image-api",
+) -> dict:
   return {
     **creative,
     "imageAssetUrl": image_url,
@@ -291,7 +311,10 @@ def _build_api_generated_creative(creative: dict, image_url: str, settings, sour
       "assetState": "generated" if source == "image-api" else "cache-hit",
       "imageSource": source,
       "provider": settings.image_provider,
-      "model": settings.image_model,
+      "model": model_config["modelId"],
+      "modelLabel": model_config["label"],
+      "pricePerImageUsd": model_config["pricePerImageUsd"],
+      "imageSize": image_size,
       "apiMarked": True,
       "promptVersion": PROMPT_VERSION,
       "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
@@ -299,7 +322,15 @@ def _build_api_generated_creative(creative: dict, image_url: str, settings, sour
   }
 
 
-def _build_fallback_creative(creative: dict, campaign: dict, index: int, settings, error: Exception) -> dict:
+def _build_fallback_creative(
+  creative: dict,
+  campaign: dict,
+  index: int,
+  settings,
+  model_config: dict,
+  image_size: str,
+  error: Exception,
+) -> dict:
   return {
     **creative,
     "imageAssetUrl": _build_placeholder_image_data_url(creative, campaign, index),
@@ -307,7 +338,10 @@ def _build_fallback_creative(creative: dict, campaign: dict, index: int, setting
       "assetState": "api-error-local-fallback",
       "imageSource": "local-svg-placeholder",
       "provider": settings.image_provider,
-      "model": settings.image_model,
+      "model": model_config["modelId"],
+      "modelLabel": model_config["label"],
+      "pricePerImageUsd": model_config["pricePerImageUsd"],
+      "imageSize": image_size,
       "apiMarked": True,
       "promptVersion": PROMPT_VERSION,
       "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
@@ -316,17 +350,25 @@ def _build_fallback_creative(creative: dict, campaign: dict, index: int, setting
   }
 
 
-def _generate_single_image(index: int, creative: dict, campaign: dict, settings, cache: dict) -> tuple[int, dict, dict]:
-  cache_key = _build_cache_key(creative["imagePrompt"], settings)
+def _generate_single_image(
+  index: int,
+  creative: dict,
+  campaign: dict,
+  settings,
+  model_config: dict,
+  image_size: str,
+  cache: dict,
+) -> tuple[int, dict, dict]:
+  cache_key = _build_cache_key(creative["imagePrompt"], settings, model_config, image_size)
   cached = cache.get(cache_key) if settings.image_cache_enabled else None
   if cached and cached.get("imageAssetUrl"):
-    return index, _build_api_generated_creative(creative, cached["imageAssetUrl"], settings, "image-cache"), {
+    return index, _build_api_generated_creative(creative, cached["imageAssetUrl"], settings, model_config, image_size, "image-cache"), {
       "status": "cache-hit",
       "cacheKey": cache_key,
     }
 
   try:
-    payload = _build_image_payload(creative["imagePrompt"], settings)
+    payload = _build_image_payload(creative["imagePrompt"], settings, model_config, image_size)
     response = post_json(
       f"{settings.image_api_base.rstrip('/')}/images/generations",
       payload,
@@ -334,13 +376,13 @@ def _generate_single_image(index: int, creative: dict, campaign: dict, settings,
       timeout=settings.image_timeout_seconds,
     )
     image_url = _extract_image_url(response)
-    return index, _build_api_generated_creative(creative, image_url, settings), {
+    return index, _build_api_generated_creative(creative, image_url, settings, model_config, image_size), {
       "status": "api-success",
       "cacheKey": cache_key,
       "imageAssetUrl": image_url,
     }
   except Exception as error:  # noqa: BLE001
-    return index, _build_fallback_creative(creative, campaign, index, settings, error), {
+    return index, _build_fallback_creative(creative, campaign, index, settings, model_config, image_size, error), {
       "status": "fallback",
       "error": f"{creative.get('id', index)}: {error}",
       "cacheKey": cache_key,
@@ -354,7 +396,7 @@ def _select_image_api_targets(prepared: list[dict], campaign: dict) -> set[int]:
   return {0} if prepared else set()
 
 
-def _build_deferred_placeholder_creative(creative: dict, campaign: dict, index: int, settings) -> dict:
+def _build_deferred_placeholder_creative(creative: dict, campaign: dict, index: int, settings, model_config: dict, image_size: str) -> dict:
   return {
     **creative,
     "imageAssetUrl": _build_placeholder_image_data_url(creative, campaign, index),
@@ -363,7 +405,10 @@ def _build_deferred_placeholder_creative(creative: dict, campaign: dict, index: 
       "assetState": "deferred-local-placeholder",
       "imageSource": "local-svg-placeholder",
       "provider": settings.image_provider,
-      "model": settings.image_model,
+      "model": model_config["modelId"],
+      "modelLabel": model_config["label"],
+      "pricePerImageUsd": model_config["pricePerImageUsd"],
+      "imageSize": image_size,
       "apiMarked": True,
       "promptVersion": PROMPT_VERSION,
       "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
@@ -376,6 +421,8 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
   settings = get_settings()
   requested_mode = campaign.get("imageGenerationMode", "mock")
   requested_count = campaign.get("imageGenerationCount", "top1")
+  model_config = _resolve_image_model(campaign, settings)
+  image_size = _resolve_image_size(campaign, settings, model_config)
   prepared = attach_image_prompts(creatives, campaign, case_context)
 
   if requested_mode != "api":
@@ -387,6 +434,10 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
       "configured": False,
       "usedApi": False,
       "apiMarked": True,
+      "model": model_config["modelId"],
+      "modelLabel": model_config["label"],
+      "pricePerImageUsd": model_config["pricePerImageUsd"],
+      "imageSize": image_size,
       "requestedCount": len(prepared),
       "generatedCount": len(prepared),
       "requestedImageCount": requested_count,
@@ -404,7 +455,10 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
       "configured": False,
       "usedApi": False,
       "apiMarked": True,
-      "model": settings.image_model,
+      "model": model_config["modelId"],
+      "modelLabel": model_config["label"],
+      "pricePerImageUsd": model_config["pricePerImageUsd"],
+      "imageSize": image_size,
       "requestedCount": len(prepared),
       "generatedCount": len(prepared),
       "requestedImageCount": requested_count,
@@ -422,11 +476,11 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
 
   for index, creative in enumerate(prepared):
     if index not in api_target_indexes:
-      generated[index] = _build_deferred_placeholder_creative(creative, campaign, index, settings)
+      generated[index] = _build_deferred_placeholder_creative(creative, campaign, index, settings, model_config, image_size)
 
   with ThreadPoolExecutor(max_workers=min(settings.image_concurrency, len(prepared))) as executor:
     futures = [
-      executor.submit(_generate_single_image, index, creative, campaign, settings, cache)
+      executor.submit(_generate_single_image, index, creative, campaign, settings, model_config, image_size, cache)
       for index, creative in enumerate(prepared)
       if index in api_target_indexes
     ]
@@ -439,8 +493,8 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
         cache_updates[trace["cacheKey"]] = {
           "imageAssetUrl": trace["imageAssetUrl"],
           "provider": settings.image_provider,
-          "model": settings.image_model,
-          "imageSize": settings.image_size,
+          "model": model_config["modelId"],
+          "imageSize": image_size,
           "createdAt": _utc_now(),
         }
       elif trace["status"] == "fallback":
@@ -462,7 +516,10 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
     "configured": True,
     "usedApi": api_success_count > 0,
     "apiMarked": True,
-    "model": settings.image_model,
+    "model": model_config["modelId"],
+    "modelLabel": model_config["label"],
+    "pricePerImageUsd": model_config["pricePerImageUsd"],
+    "imageSize": image_size,
     "timeoutSeconds": settings.image_timeout_seconds,
     "concurrency": settings.image_concurrency,
     "cacheEnabled": settings.image_cache_enabled,
