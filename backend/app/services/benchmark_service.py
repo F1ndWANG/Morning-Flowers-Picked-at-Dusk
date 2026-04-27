@@ -14,6 +14,7 @@ def _build_request(sample: dict) -> dict:
   return {
     "caseText": sample.get("caseText", ""),
     "caseAssets": [],
+    "caseUnderstandingMode": sample.get("caseUnderstandingMode", "mock"),
     "productName": sample.get("productName", ""),
     "brandName": sample.get("brandName", ""),
     "category": sample.get("category", "beauty"),
