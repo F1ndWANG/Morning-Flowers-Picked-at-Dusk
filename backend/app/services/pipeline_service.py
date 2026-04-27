@@ -24,6 +24,7 @@ def run_pipeline(form: dict) -> dict:
     "metricIntervals": baseline_scoring["metricIntervals"],
     "features": baseline_scoring["features"],
     "advancedFeatures": baseline_scoring["advancedFeatures"],
+    "industrialFeatures": baseline_scoring["industrialFeatures"],
     "alignment": baseline_scoring["alignment"],
     "contributions": baseline_scoring["contributions"],
     "reasons": baseline_scoring["reasons"],

@@ -139,9 +139,10 @@ function renderCreativeQueue(dom, creatives, activeKey) {
             <span>Score <b>${formatScore(creative.score)}</b></span>
             <span>CTR <b>${formatPercent(metrics.ctr || 0)}</b></span>
             <span>CVR <b>${formatPercent(metrics.cvr || 0)}</b></span>
+            <span>CTCVR <b>${formatPercent(metrics.ctcvr || 0)}</b></span>
             <span>eCPM <b>${Number(metrics.ecpm || 0).toFixed(1)}</b></span>
             <span>Quality <b>${formatRatio(creative.advancedFeatures?.commercialQuality)}</b></span>
-            <span>Align <b>${formatRatio(creative.alignment?.overallAlignment)}</b></span>
+            <span>DCN <b>${formatRatio(creative.industrialFeatures?.dcnCrossScore)}</b></span>
           </div>
         </button>
       `;
@@ -194,6 +195,10 @@ function renderCreativeDetail(dom, result, winner) {
       ["信任深度", winner.advancedFeatures?.trustDepth],
       ["图文一致", winner.alignment?.imageCopyAlignment],
       ["整体一致", winner.alignment?.overallAlignment],
+      ["DCN交叉", winner.industrialFeatures?.dcnCrossScore],
+      ["ESMM一致", winner.industrialFeatures?.multitaskConsistency],
+      ["兴趣代理", winner.industrialFeatures?.userInterestProxy],
+      ["校准系数", winner.industrialFeatures?.calibrationFactor],
     ]
       .map(([label, value]) => `
         <article>

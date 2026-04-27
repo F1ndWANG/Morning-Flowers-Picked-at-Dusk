@@ -61,6 +61,7 @@ def _build_base_rank_items(candidates: list[dict], objective: str, diversity_wei
   for creative in candidates:
     metrics = creative["metrics"]
     features = creative.get("advancedFeatures", {})
+    industrial = creative.get("industrialFeatures", {})
     alignment = creative.get("alignment", {})
     compliance = creative.get("compliance", {})
 
@@ -72,6 +73,11 @@ def _build_base_rank_items(candidates: list[dict], objective: str, diversity_wei
     ) * 0.10
     quality_component = features.get("commercialQuality", 0.5) * 0.09
     alignment_component = alignment.get("overallAlignment", 0.3) * 0.08
+    industrial_component = (
+      industrial.get("dcnCrossScore", 0.5) * 0.045
+      + industrial.get("multitaskConsistency", 0.5) * 0.045
+      + industrial.get("userInterestProxy", 0.5) * 0.035
+    )
     diversity_component = creative.get("diversity", 0.22) * diversity_weight
     pareto_component = _pareto_bonus(creative, candidates)
     risk_penalty = (
@@ -88,6 +94,7 @@ def _build_base_rank_items(candidates: list[dict], objective: str, diversity_wei
       + risk_adjusted_component
       + quality_component
       + alignment_component
+      + industrial_component
       + diversity_component
       + pareto_component
       - risk_penalty
@@ -104,6 +111,7 @@ def _build_base_rank_items(candidates: list[dict], objective: str, diversity_wei
           "riskAdjustedComponent": risk_adjusted_component,
           "qualityComponent": quality_component,
           "alignmentComponent": alignment_component,
+          "industrialComponent": industrial_component,
           "diversityComponent": diversity_component,
           "paretoComponent": pareto_component,
           "riskPenalty": risk_penalty,

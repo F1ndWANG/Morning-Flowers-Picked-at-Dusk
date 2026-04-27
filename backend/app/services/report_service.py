@@ -15,6 +15,7 @@ def build_report(
   intervals = winner.get("metricIntervals", {})
   ranking = winner.get("rankingBreakdown", {})
   advanced = winner.get("advancedFeatures", {})
+  industrial = winner.get("industrialFeatures", {})
   alignment = winner.get("alignment", {})
   diagnosis = winner.get("diagnosis", {})
 
@@ -39,6 +40,7 @@ def build_report(
       "## 3. Current Result",
       f"- Baseline CTR / CVR / eCPM: {format_percent(baseline['metrics']['ctr'])} / {format_percent(baseline['metrics']['cvr'])} / {baseline['metrics']['ecpm']:.1f}",
       f"- Winner CTR / CVR / eCPM: {format_percent(winner['metrics']['ctr'])} / {format_percent(winner['metrics']['cvr'])} / {winner['metrics']['ecpm']:.1f}",
+      f"- Winner CTCVR / post-click CVR: {format_percent(winner['metrics'].get('ctcvr', 0))} / {format_percent(winner['metrics'].get('postClickCvr', winner['metrics']['cvr']))}",
       f"- Prediction confidence: {winner['metrics'].get('confidence', 0):.2f}",
       f"- Risk-adjusted eCPM: {winner['metrics'].get('riskAdjustedEcpm', 0):.1f}",
       f"- CTR interval: {format_percent(intervals.get('ctr', {}).get('lower', winner['metrics']['ctr']))} - {format_percent(intervals.get('ctr', {}).get('upper', winner['metrics']['ctr']))}",
@@ -53,7 +55,10 @@ def build_report(
       f"- Rerank base score / final score: {ranking.get('baseScore', 0):.4f} / {ranking.get('finalScore', 0):.4f}",
       f"- Pareto bonus / risk penalty: {ranking.get('paretoComponent', 0):.4f} / {ranking.get('riskPenalty', 0):.4f}",
       f"- MMR novelty penalty: {ranking.get('noveltyPenalty', 0):.4f}",
+      f"- Industrial component: {ranking.get('industrialComponent', 0):.4f}",
       f"- Commercial quality / alignment: {advanced.get('commercialQuality', 0):.2f} / {alignment.get('overallAlignment', 0):.2f}",
+      f"- DCN cross score / multi-task consistency: {industrial.get('dcnCrossScore', 0):.2f} / {industrial.get('multitaskConsistency', 0):.2f}",
+      f"- User interest proxy / calibration factor: {industrial.get('userInterestProxy', 0):.2f} / {industrial.get('calibrationFactor', 1):.2f}",
       f"- Diagnosis level: {diagnosis.get('level', 'unknown')}",
       "",
       "## 4. Surface Recommendation",

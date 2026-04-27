@@ -181,6 +181,13 @@ http://127.0.0.1:8000/health
 
 The current predictor is an explainable artifact-backed runtime designed for fast iteration and transparent scoring. It extracts structured creative and campaign features, predicts CTR/CVR, derives eCPM, estimates confidence intervals, and supports model registry switching.
 
+The ranking layer now includes mainstream search/ads/recommendation prediction ideas:
+
+- Wide&Deep/DCN-style feature crossing: brand-sell-point, trust-price, CTA-surface, audience-context, and image-copy alignment interactions.
+- DeepFM-style interaction proxy: selling-point density, trust depth, readability, image-copy consistency, and multimodal grounding.
+- ESMM-style multi-task consistency: CTR, CVR, CTCVR, post-click CVR, and click-conversion consistency are calculated together.
+- Industrial reranking signals: the final rank score uses CTR, CVR, eCPM, risk-adjusted eCPM, confidence, compliance, diversity, Pareto bonus, DCN cross score, multi-task consistency, and user-interest proxy.
+
 The prediction layer can be replaced with production-grade models such as DeepFM, DCNv2, MMoE, PLE, ESMM, or a learning-to-rank model trained on real impression/click/conversion logs.
 
 ## Git Safety

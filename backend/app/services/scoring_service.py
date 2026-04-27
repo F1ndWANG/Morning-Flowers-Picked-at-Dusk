@@ -2,6 +2,7 @@ import re
 
 from backend.app.core.catalog import CATEGORY_CONFIG, PLATFORM_LABELS
 from backend.app.services.creative_feature_extractor import extract_advanced_features
+from backend.app.services.industrial_prediction_service import attach_esmm_outputs, build_industrial_prediction_signals
 from backend.app.services.model_runtime_service import get_model_runtime, get_surface_weights
 from backend.app.services.multimodal_alignment_service import evaluate_multimodal_alignment
 from backend.app.services.predictor_service import predict_metric
@@ -157,6 +158,14 @@ def score_creative(creative: dict, campaign: dict, case_context: dict, seed: flo
   signals = _build_signals(creative, campaign, case_context)
   advanced_features = extract_advanced_features(creative, campaign, case_context)
   alignment = evaluate_multimodal_alignment(creative, campaign, case_context)
+  industrial_features = build_industrial_prediction_signals(
+    creative,
+    campaign,
+    case_context,
+    signals,
+    advanced_features,
+    alignment,
+  )
   ctr, ctr_contributions = predict_metric("ctr", signals, seed * 0.0025)
   cvr, cvr_contributions = predict_metric("cvr", signals, seed * 0.0016)
 
@@ -182,20 +191,44 @@ def score_creative(creative: dict, campaign: dict, case_context: dict, seed: flo
   )
   ctr = _clamp(ctr * ctr_multiplier, 0.001, 1)
   cvr = _clamp(cvr * cvr_multiplier, 0.001, 1)
+  industrial_ctr_multiplier = _clamp(
+    0.88
+    + industrial_features["dcnCrossScore"] * 0.14
+    + industrial_features["memorizationCross"] * 0.07
+    + industrial_features["userInterestProxy"] * 0.07
+    + industrial_features["surfaceIntentScore"] * 0.04
+    - advanced_features["riskCueDensity"] * 0.05,
+    0.86,
+    1.22,
+  )
+  industrial_cvr_multiplier = _clamp(
+    0.87
+    + industrial_features["fmInteractionScore"] * 0.10
+    + industrial_features["multitaskConsistency"] * 0.12
+    + industrial_features["conversionTaskScore"] * 0.07
+    + industrial_features["surfaceConversionScore"] * 0.04
+    - advanced_features["conversionFriction"] * 0.08,
+    0.84,
+    1.24,
+  )
+  ctr = _clamp(ctr * industrial_ctr_multiplier * industrial_features["calibrationFactor"], 0.001, 1)
+  cvr = _clamp(cvr * industrial_cvr_multiplier * industrial_features["calibrationFactor"], 0.001, 1)
 
   bid_factor = CATEGORY_CONFIG[campaign["category"]]["bidFactor"]
   surface_factor = get_surface_weights().get(campaign["platform"], 1.0)
   ecpm = ctr * (1.4 + cvr * 100) * bid_factor * surface_factor * 1000
   confidence = _estimate_confidence(case_context, signals, advanced_features, alignment)
+  confidence = _clamp(
+    confidence
+    + industrial_features["multitaskConsistency"] * 0.035
+    + industrial_features["dcnCrossScore"] * 0.025
+    - advanced_features["conversionFriction"] * 0.025,
+    0.55,
+    0.98,
+  )
   intervals = _build_metric_intervals(ctr, cvr, ecpm, confidence)
-
-  contributions = {
-    "ctr": {key: ctr_contributions.get(key, 0) for key in signals},
-    "cvr": {key: cvr_contributions.get(key, 0) for key in signals},
-  }
-
-  return {
-    "metrics": {
+  metrics = attach_esmm_outputs(
+    {
       "ctr": ctr,
       "cvr": cvr,
       "ecpm": ecpm,
@@ -205,9 +238,20 @@ def score_creative(creative: dict, campaign: dict, case_context: dict, seed: flo
       "confidence": confidence,
       "riskAdjustedEcpm": ecpm * confidence,
     },
+    industrial_features,
+  )
+
+  contributions = {
+    "ctr": {key: ctr_contributions.get(key, 0) for key in signals},
+    "cvr": {key: cvr_contributions.get(key, 0) for key in signals},
+  }
+
+  return {
+    "metrics": metrics,
     "metricIntervals": intervals,
     "features": signals,
     "advancedFeatures": advanced_features,
+    "industrialFeatures": industrial_features,
     "alignment": alignment,
     "contributions": contributions,
     "reasons": _build_reason_list(signals, campaign, case_context),
@@ -224,6 +268,7 @@ def enrich_creatives(creatives: list[dict], campaign: dict, case_context: dict) 
         "metrics": scoring["metrics"],
         "features": scoring["features"],
         "advancedFeatures": scoring["advancedFeatures"],
+        "industrialFeatures": scoring["industrialFeatures"],
         "alignment": scoring["alignment"],
         "contributions": scoring["contributions"],
         "metricIntervals": scoring["metricIntervals"],
@@ -248,6 +293,7 @@ def build_surface_predictions(winner: dict, campaign: dict) -> dict:
       "fit": fit,
       "ctr": _clamp(surface_ctr, 0.004, 0.2),
       "cvr": _clamp(surface_cvr, 0.003, 0.12),
+      "ctcvr": _clamp(surface_ctr, 0.004, 0.2) * _clamp(surface_cvr, 0.003, 0.12),
       "ecpm": surface_ecpm,
       "confidence": confidence,
       "riskAdjustedEcpm": surface_ecpm * confidence,
