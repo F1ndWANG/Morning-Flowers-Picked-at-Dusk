@@ -347,9 +347,35 @@ def _generate_single_image(index: int, creative: dict, campaign: dict, settings,
     }
 
 
+def _select_image_api_targets(prepared: list[dict], campaign: dict) -> set[int]:
+  requested_count = campaign.get("imageGenerationCount", "top1")
+  if requested_count == "all":
+    return set(range(len(prepared)))
+  return {0} if prepared else set()
+
+
+def _build_deferred_placeholder_creative(creative: dict, campaign: dict, index: int, settings) -> dict:
+  return {
+    **creative,
+    "imageAssetUrl": _build_placeholder_image_data_url(creative, campaign, index),
+    "imageMeta": {
+      **creative.get("imageMeta", {}),
+      "assetState": "deferred-local-placeholder",
+      "imageSource": "local-svg-placeholder",
+      "provider": settings.image_provider,
+      "model": settings.image_model,
+      "apiMarked": True,
+      "promptVersion": PROMPT_VERSION,
+      "promptFramework": list(creative.get("imagePromptDimensions", {}).keys()),
+      "note": "Image API generation was skipped for this non-top creative to control cost.",
+    },
+  }
+
+
 def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_context: dict) -> tuple[list[dict], dict]:
   settings = get_settings()
   requested_mode = campaign.get("imageGenerationMode", "mock")
+  requested_count = campaign.get("imageGenerationCount", "top1")
   prepared = attach_image_prompts(creatives, campaign, case_context)
 
   if requested_mode != "api":
@@ -363,6 +389,8 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
       "apiMarked": True,
       "requestedCount": len(prepared),
       "generatedCount": len(prepared),
+      "requestedImageCount": requested_count,
+      "apiTargetCount": 0,
       "fallbackCount": len(prepared),
       "note": "Image API is disabled, so every creative received an independent local SVG ad image.",
     }
@@ -379,6 +407,8 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
       "model": settings.image_model,
       "requestedCount": len(prepared),
       "generatedCount": len(prepared),
+      "requestedImageCount": requested_count,
+      "apiTargetCount": 0,
       "fallbackCount": len(prepared),
       "note": "Image API mode was selected but AIGCSAR_IMAGE_API_KEY is missing, so every creative received an independent local SVG ad image.",
     }
@@ -388,11 +418,17 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
   cache_hits = 0
   cache_updates = {}
   cache = _load_image_cache() if settings.image_cache_enabled else {}
+  api_target_indexes = _select_image_api_targets(prepared, campaign)
+
+  for index, creative in enumerate(prepared):
+    if index not in api_target_indexes:
+      generated[index] = _build_deferred_placeholder_creative(creative, campaign, index, settings)
 
   with ThreadPoolExecutor(max_workers=min(settings.image_concurrency, len(prepared))) as executor:
     futures = [
       executor.submit(_generate_single_image, index, creative, campaign, settings, cache)
       for index, creative in enumerate(prepared)
+      if index in api_target_indexes
     ]
     for future in as_completed(futures):
       index, creative_result, trace = future.result()
@@ -416,10 +452,12 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
 
   api_success_count = sum(1 for item in generated if item.get("imageMeta", {}).get("imageSource") == "image-api")
   cache_success_count = sum(1 for item in generated if item.get("imageMeta", {}).get("imageSource") == "image-cache")
-  fallback_count = len(generated) - api_success_count - cache_success_count
+  deferred_count = sum(1 for item in generated if item.get("imageMeta", {}).get("assetState") == "deferred-local-placeholder")
+  fallback_count = len(generated) - api_success_count - cache_success_count - deferred_count
   return generated, {
-    "mode": "api" if api_success_count + cache_success_count == len(generated) else "api-partial-fallback",
+    "mode": "api" if api_success_count + cache_success_count == len(api_target_indexes) and fallback_count == 0 else "api-partial-fallback",
     "requestedMode": requested_mode,
+    "requestedImageCount": requested_count,
     "provider": settings.image_provider,
     "configured": True,
     "usedApi": api_success_count > 0,
@@ -430,12 +468,15 @@ def maybe_generate_image_assets(creatives: list[dict], campaign: dict, case_cont
     "cacheEnabled": settings.image_cache_enabled,
     "requestedCount": len(generated),
     "generatedCount": len(generated),
+    "apiTargetCount": len(api_target_indexes),
     "apiSuccessCount": api_success_count,
     "cacheHitCount": cache_hits,
+    "deferredCount": deferred_count,
     "fallbackCount": fallback_count,
     "note": (
-      f"Generated image assets for {len(generated)} creatives with concurrency={settings.image_concurrency}. "
-      f"API success: {api_success_count}, cache hit: {cache_hits}, local fallback: {fallback_count}."
+      f"Prepared image assets for {len(generated)} creatives. "
+      f"API target: {len(api_target_indexes)}, API success: {api_success_count}, "
+      f"cache hit: {cache_hits}, deferred: {deferred_count}, local fallback: {fallback_count}."
     ),
     "errors": errors[:3],
   }

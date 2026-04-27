@@ -31,6 +31,7 @@ class CampaignRequest(BaseModel):
   highlights: List[str] = Field(default_factory=list)
   textGenerationMode: str = "mock"
   imageGenerationMode: str = "mock"
+  imageGenerationCount: Literal["top1", "all"] = "top1"
 
   @model_validator(mode="after")
   def validate_case_presence(self) -> "CampaignRequest":

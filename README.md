@@ -11,6 +11,7 @@ The system accepts a product campaign task, generates multiple ad creative candi
 - **Multi-creative generation**: generates multiple candidate ad titles, descriptions, selling points, and image-copy lines for one task.
 - **Text generation modes**: supports local mock templates and real LLM API integration.
 - **Image generation pipeline**: builds structured image prompts internally and optionally calls an image generation API. The frontend only shows final ad images or image-copy lines.
+- **Image cost control**: image API generation can be limited to the top-ranked creative by default, or expanded to all candidate creatives when needed.
 - **Performance prediction**: predicts CTR, CVR, eCPM, confidence, confidence intervals, and risk-adjusted eCPM for each creative.
 - **Search/ads/recommendation forecasting**: estimates each creative's performance on search ads, feed ads, video recommendation, and mall recommendation surfaces.
 - **Multi-objective reranking**: ranks creative candidates using CTR, CVR, eCPM, risk-adjusted eCPM, confidence, compliance score, and diversity-aware MMR penalty.
@@ -176,6 +177,11 @@ http://127.0.0.1:8000/health
 4. Review the ranked creative queue.
 5. Switch between candidate creatives to compare title, description, selling points, image copy, generated image, and predicted performance.
 6. Use the search/feed/video/mall forecast panel to understand surface-specific performance.
+
+Image generation count:
+
+- Default: generate only the top-ranked creative image with the image API, while other candidates use local placeholder images.
+- Optional: switch to generating all candidate images when full visual comparison is required.
 
 ## Prediction Model Notes
 

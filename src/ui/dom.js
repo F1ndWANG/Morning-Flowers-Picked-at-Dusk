@@ -35,6 +35,7 @@ export function getDomElements() {
     tone: document.querySelector("#tone"),
     textGenerationMode: document.querySelector("#text-generation-mode"),
     imageGenerationMode: document.querySelector("#image-generation-mode"),
+    imageGenerationCount: document.querySelector("#image-generation-count"),
     highlights: document.querySelector("#highlights"),
     generateBtn: document.querySelector("#generate-btn"),
     sampleSkincare: document.querySelector("#sample-skincare"),
@@ -101,6 +102,7 @@ export function readForm(dom) {
     highlights: splitHighlights(dom.highlights?.value),
     textGenerationMode: dom.textGenerationMode?.value || "api",
     imageGenerationMode: dom.imageGenerationMode?.value || "api",
+    imageGenerationCount: dom.imageGenerationCount?.value || "top1",
   };
 }
 
@@ -147,6 +149,7 @@ export function populateForm(dom, sample) {
   if (dom.platform) dom.platform.value = sample.platform || "feed";
   if (dom.tone) dom.tone.value = sample.tone || "premium";
   if (dom.caseUnderstandingMode) dom.caseUnderstandingMode.value = sample.caseUnderstandingMode || "api";
+  if (dom.imageGenerationCount) dom.imageGenerationCount.value = sample.imageGenerationCount || "top1";
   if (dom.highlights) dom.highlights.value = sample.highlights || "";
   if (dom.caseImage) dom.caseImage.value = "";
   if (dom.caseAudio) dom.caseAudio.value = "";

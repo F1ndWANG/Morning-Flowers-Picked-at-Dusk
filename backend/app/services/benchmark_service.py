@@ -30,6 +30,7 @@ def _build_request(sample: dict) -> dict:
     "highlights": highlight_list,
     "textGenerationMode": sample.get("textGenerationMode", "mock"),
     "imageGenerationMode": sample.get("imageGenerationMode", "mock"),
+    "imageGenerationCount": sample.get("imageGenerationCount", "top1"),
   }
 
 

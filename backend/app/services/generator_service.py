@@ -39,6 +39,7 @@ def merge_campaign(form: dict, case_context: dict) -> dict:
     "caseSignals": case_context.get("caseSignals") or [],
     "textGenerationMode": form.get("textGenerationMode", "mock"),
     "imageGenerationMode": form.get("imageGenerationMode", "mock"),
+    "imageGenerationCount": form.get("imageGenerationCount", "top1"),
   }
 
 
